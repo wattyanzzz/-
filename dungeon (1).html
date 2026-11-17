@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>暗黒の螺旋回廊 — テキストRPG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e9e4d6;--panel:#f5f1e6;--ink:#23212a;--dim:#6b6759;--line:#c9c2ae;--accent:#2d4a7a;--hp:#a6323f;
+color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12131c;--panel:#1b1d2b;--ink:#e7e2d0;--dim:#8c8a80;--line:#2f3245;--accent:#d2a94f;--hp:#d0606b;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#12131c;--panel:#1b1d2b;--ink:#e7e2d0;--dim:#8c8a80;--line:#2f3245;--accent:#d2a94f;--hp:#d0606b;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Shippori Mincho','Hiragino Mincho ProN','Yu Mincho',serif;line-height:1.7}
+#app{max-width:520px;margin:0 auto;padding:14px}
+h1{font-size:26px;margin:4px 0 12px;letter-spacing:.2em}
+.party{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.pm{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:6px 9px;font-size:14px;line-height:1.5}
+.pm i{font-style:normal;color:var(--dim);font-size:12px;margin-left:4px}
+.pm span{display:block;font-size:13px}
+.pm.dead{opacity:.45}.pm.dead b{text-decoration:line-through}
+.pm.cur{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.gold{text-align:right;font-size:13px;color:var(--dim);margin:6px 2px}
+.stage{display:flex;gap:12px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:14px;margin-bottom:10px}
+.view{flex:1;font-size:17px}.view small{display:block;color:var(--dim);font-size:13px}
+.view p{margin:0 0 6px}
+.map{display:grid;grid-template-columns:repeat(11,13px);gap:1px}
+.map i{display:block;width:13px;height:13px;font-style:normal;font-size:10px;line-height:13px;text-align:center}
+.map .w{background:var(--line)}.map .f{background:var(--bg)}.map .p{color:var(--accent);font-weight:700;background:var(--bg)}
+.log{min-height:112px;margin-bottom:10px;padding:0 2px}
+.log p{margin:0 0 2px;font-size:14px;color:var(--dim)}.log p:last-child{color:var(--ink)}
+button{font:inherit;font-size:16px;min-height:46px;padding:6px 12px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:4px;cursor:pointer}
+button:active{border-color:var(--accent)}
+button:disabled{opacity:.4;cursor:default}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.dpad,.row{display:grid;gap:6px;margin-bottom:6px}
+.dpad{grid-template-columns:repeat(3,1fr)}.row{grid-template-columns:1fr 1fr}
+.main{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:700}
+.en{width:100%;text-align:left;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.en.dead{text-decoration:line-through}
+.bar{display:inline-block;width:70px;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar s{display:block;height:100%;background:var(--hp)}
+.who{font-size:15px;margin:0 0 6px}
+.foes{display:flex;justify-content:center;align-items:flex-end;gap:10px;min-height:120px;margin-bottom:10px;padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:4px}
+.foes figure{margin:0;text-align:center;font-size:12px;color:var(--dim)}
+.foes svg{display:block;width:96px;height:96px;margin:0 auto 2px}
+.foes.boss svg{width:150px;height:150px}
+.foes .gone{opacity:.15;filter:grayscale(1)}
+@keyframes bob{50%{transform:translateY(-3px)}}
+@media (prefers-reduced-motion:no-preference){.foes figure:not(.gone) svg{animation:bob 1.1s steps(1) infinite}}
+.g{display:flex;align-items:center;gap:6px;font-size:12px;line-height:1.5}.g em{font-style:normal;width:20px;color:var(--dim)}.g u{flex:1;height:7px;background:var(--line);border-radius:4px;overflow:hidden}.g u s{display:block;height:100%;background:var(--hp)}.g.mp u s{background:#4f86c6}.g var{font-style:normal;min-width:48px;text-align:right}
+input,select{font:inherit;font-size:16px;min-height:46px;min-width:0;padding:6px 10px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:4px}
+@media (prefers-reduced-motion:no-preference){.pm{transition:border-color .2s}}
+</style></head>
+<body><div id="app"></div>
+<script>
+const SK='dungeon-save-v2';
+const CL={戦士:[30,0,7],僧侶:[20,8,4],魔術師:[15,10,3],盗賊:[19,0,6]};
+const EN=[{n:'スライム',hp:9,atk:4,xp:6,g:6},{n:'ゴブリン',hp:14,atk:6,xp:10,g:10},{n:'スケルトン',hp:20,atk:9,xp:16,g:16},{n:'オーク',hp:30,atk:12,xp:26,g:26},{n:'亡霊',hp:36,atk:15,xp:38,g:36},{n:'石像',hp:56,atk:18,xp:55,g:50},{n:'吸血鬼',hp:60,atk:21,xp:75,g:70},{n:'魔狼',hp:72,atk:24,xp:100,g:95},{n:'竜牙兵',hp:88,atk:27,xp:135,g:130},{n:'魔神',hp:105,atk:30,xp:180,g:180}];
+const BOSS={n:'大魔導師ヴォルグ',hp:420,atk:32,xp:900,g:1000,boss:1};
+const WEP=[{n:'鉄の剣',a:3,p:80},{n:'戦斧',a:5,p:160},{n:'鋼の剣',a:7,p:260},{n:'聖銀の剣',a:10,p:420},{n:'魔剣',a:13,p:640},{n:'竜殺しの剣',a:17,p:900}];
+const ARM=[{n:'革の鎧',d:2,p:70},{n:'鎖帷子',d:4,p:150},{n:'鋼の鎧',d:6,p:250},{n:'聖銀の鎧',d:9,p:400},{n:'魔鎧',d:12,p:620},{n:'竜鱗の鎧',d:16,p:880}];
+let MAP;
+function gen(f){
+  let s=f*7919+13+((G&&G.loop)||0)*104729+((G&&G.seed)||0);const r=()=>(s=s*16807%2147483647)/2147483647;
+  const g=Array.from({length:11},()=>Array(11).fill('#')),st=[[1,1]];g[1][1]='.';
+  while(st.length){
+    const[x,y]=st[st.length-1];
+    const n=[[2,0],[-2,0],[0,2],[0,-2]].filter(([a,b])=>x+a>0&&x+a<10&&y+b>0&&y+b<10&&g[y+b][x+a]==='#');
+    if(!n.length){st.pop();continue}
+    const[a,b]=n[Math.floor(r()*n.length)];g[y+b/2][x+a/2]='.';g[y+b][x+a]='.';st.push([x+a,y+b]);
+  }
+  const D={'1,1':0},q=[[1,1]];let far=[1,1];
+  for(let i=0;i<q.length;i++){const[x,y]=q[i];far=[x,y];
+    for(const[a,b]of DIRS){const k=(x+a)+','+(y+b);if(g[y+b][x+a]!=='#'&&!(k in D)){D[k]=1;q.push([x+a,y+b])}}}
+  const de=[];
+  for(let y=1;y<10;y+=2)for(let x=1;x<10;x+=2)
+    if(DIRS.filter(([a,b])=>g[y+b][x+a]!=='#').length===1&&!(x===1&&y===1)&&!(x===far[0]&&y===far[1]))de.push([x,y]);
+  for(let i=0;i<2&&de.length;i++){const[x,y]=de.splice(Math.floor(r()*de.length),1)[0];g[y][x]='T'}
+  g[far[1]][far[0]]=f===10?'B':'D';g[1][1]='S';g.d=far;return g;
+}
+function newGame(){G={mode:'create',party:[],log:[],gold:0};render()}
+function createView(){
+  const df=['ガイウス','ミリア','ゼノン','リーゼ'],dc=['戦士','僧侶','魔術師','盗賊'];
+  let sv='';try{sv=localStorage.getItem(SK)||''}catch(e){}
+  document.getElementById('app').innerHTML='<h1>暗黒の螺旋回廊</h1><p>名前と職業を選んで、4人の冒険者を作ろう。</p>'
+  +df.map((n,i)=>`<div class="row"><input id="n${i}" value="${n}" maxlength="6" aria-label="名前${i+1}"><select id="c${i}">${Object.keys(CL).map(c=>`<option value="${c}"${c===dc[i]?' selected':''}>${c}</option>`).join('')}</select></div>`).join('')
+  +'<button class="main" style="width:100%;margin-bottom:6px" onclick="begin()">冒険を始める</button>'
+  +(sv?'<button style="width:100%" onclick="loadGame()">続きから</button>':'');
+}
+function begin(){startGame([0,1,2,3].map(i=>{
+  const c=document.getElementById('c'+i).value,[h,m,a]=CL[c];
+  return mk((document.getElementById('n'+i).value||'名無し').replace(/[<>&"']/g,''),c,h,m,a)}))}
+function save(){try{
+  if(G.mode==='explore')localStorage.setItem(SK,JSON.stringify({...G,seen:[...G.seen],log:G.log.slice(-6)}));
+  else if(G.mode==='win'){const s=loopState();s.seen=[];localStorage.setItem(SK,JSON.stringify(s))}
+  else if(G.mode==='over')localStorage.removeItem(SK);
+}catch(e){}}
+function loadGame(){try{
+  const s=JSON.parse(localStorage.getItem(SK));s.seen=new Set(s.seen);G=s;MAP=gen(G.F);G.menu=null;log('冒険を再開した。');render();
+}catch(e){newGame()}}
+const SP={
+'スライム':[['#52b36b','#1f5c36','#b4ecc0','#111'],['......','......','....bb','..bbaa','.baaaa','.bacaa','baaeaa','baaeaa','baaaaa','baaaaa','.bbbbb','......']],
+'ゴブリン':[['#6f9e3a','#2d4a14','#e8e0c0','#e33'],['......','..bbbb','b.baaa','bbaaaa','.baeaa','.baaaa','..bccc','..bbbb','.bbaaa','.baaaa','.baab.','.bb...']],
+'スケルトン':[['#e8e4d4','#4a4a58','#9a9a9a','#111'],['......','..bbbb','.baaaa','.baaaa','.beeaa','.beeaa','..bbcc','...bba','.bccaa','..bbaa','.bccaa','..b.aa']],
+'オーク':[['#7a8f4e','#2f3a1a','#f2f2e0','#f33'],['......','..bbbb','.baaaa','.baaaa','.beeaa','.baaaa','bcabbb','..bbbb','bbaaaa','baaaaa','.baaaa','.bb.bb']],
+'亡霊':[['#d8dcf0','#7a80b0','#ffffff','#222'],['......','...bbb','..baaa','.baaaa','.baaaa','.baeea','.baeea','.baaaa','.baaaa','.baaaa','.ba.ba','.b..b.']],
+'石像':[['#8c8f99','#3a3c44','#c4c7d0','#f5c542'],['b.....','bb..bb','.baaaa','.baeea','.baaaa','..bbcc','bbbaaa','bcbaaa','bcbaaa','.bbaaa','..baab','..bb.b']],
+'吸血鬼':[['#e6dccb','#3a1230','#b3243a','#e22'],['......','..bbbb','.bbbbb','.baaaa','.baeea','.baaaa','..baca','..bbbb','bcbbbb','bcbbbb','bbbbbb','bb.bb.']],
+'魔狼':[['#6b6f85','#25283a','#e8e8f0','#ffd23a'],['b.....','bb....','baaaaa','baaaaa','baeeaa','baaaaa','.baaaa','..bbaa','..bcab','..bbbb','......','......']],
+'竜牙兵':[['#d9cfa5','#5a3a1e','#c0392b','#ff5a1f'],['b.....','bbbbbb','baaaaa','baeeaa','baeeaa','.baaaa','..bccc','..cbbb','bbbaaa','bcbaaa','bbb.aa','..bb..']],
+'魔神':[['#b3263a','#4a0f1a','#f2c14e','#ffe066'],['c.....','cc....','.cbbbb','..baaa','..beea','..baaa','..bccc','..bbbb','bbaaaa','baaaaa','baa.aa','bb..bb']],
+'大魔導師ヴォルグ':[['#d8c0a8','#3a2a78','#f0ece0','#ff4040'],['.....b','....bb','...bbb','..bbcb','bbbbbb','..baaa','..beea','..bccc','.bbccc','bbbbcc','bbbbbb','bbbbbb']]
+};
+function spr(n){
+  const s=SP[n.split(' ')[0]];if(!s)return '';
+  const p={a:s[0][0],b:s[0][1],c:s[0][2],e:s[0][3]};let r='';
+  s[1].forEach((row,y)=>[...(row+[...row].reverse().join(''))].forEach((c,x)=>{if(c!=='.')r+=`<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${p[c]}"/>`}));
+  return `<svg viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true">${r}</svg>`;
+}
+let AT,LT,SHOWN=0;
+function typeLog(){
+  const ps=[...document.querySelectorAll('.log p')],n=Math.min(ps.length,Math.max(0,G.log.length-SHOWN));
+  SHOWN=G.log.length;clearInterval(LT);
+  if(!n)return 0;
+  const todo=ps.slice(ps.length-n),txt=todo.map(p=>p.textContent);
+  todo.forEach(p=>p.textContent='\u00a0');
+  let i=0,j=0;
+  const done=()=>{clearInterval(LT);todo.forEach((p,k)=>p.textContent=txt[k])};
+  LT=setInterval(()=>{
+    if(i>=todo.length)return clearInterval(LT);
+    todo[i].textContent=txt[i].slice(0,++j);
+    if(j>=txt[i].length){i++;j=0}
+  },18);
+  document.querySelector('.log').onclick=done;
+  return txt.reduce((s,t)=>s+t.length,0)*18;
+}
+const gb=(l,v,mx,c)=>`<div class="g ${c}"><em>${l}</em><u><s style="width:${mx?Math.max(0,v)/mx*100:0}%"></s></u><var>${mx?v+'/'+mx:'－'}</var></div>`;
+function render(){
+  if(G.mode==='create'){createView();return tx(document.getElementById('app'))}
+  render0();tx(document.getElementById('app'));const tm=typeLog();save();setBgm(G.mode==='over'?'':G.mode==='battle'?'battle':'field');
+  clearTimeout(AT);
+  if(G.mode==='battle'&&G.auto&&!G.pending)AT=setTimeout(autoRound,800+tm);
+}
+function autoRound(){
+  if(G.mode!=='battle'||!G.auto)return;
+  const live=()=>G.enemies.map((e,i)=>[e,i]).filter(([e])=>e.hp>0);
+  const pick=()=>live().sort((a,b)=>a[0].hp-b[0].hp)[0][1];
+  const al=G.party.map((p,i)=>[p,i]).filter(([p])=>p.hp>0);
+  const weak=al.slice().sort((a,b)=>a[0].hp/a[0].max-b[0].hp/b[0].max)[0],r=weak[0].hp/weak[0].max;
+  let herb=G.herb;G.actions=[];
+  for(const[m,i]of al){
+    let a={t:'atk',tg:pick()};
+    if(m.c==='僧侶'&&m.mp>=2&&r<.5)a={t:'heal',tg:weak[1]};
+    else if(m.c==='魔術師'&&m.mp>=3&&(live().length>1||G.isBoss))a={t:'fire'};
+    else if(r<.3&&herb>0){a={t:'herb',tg:weak[1]};herb--}
+    a.m=i;G.actions.push(a);
+  }
+  resolve();
+}
+function give(it){
+  const f=it.k==='w'?'w':'ar',v=it.k==='w'?'a':'d',cur=p=>p[f]?p[f][v]:0;
+  const al=G.party.filter(p=>p.hp>0).sort((a,b)=>cur(a)-cur(b))[0];
+  if(al&&cur(al)<it[v]){al[f]={n:it.n,[v]:it[v]};return `${it.n}を${al.n}が装備した。`}
+  G.gold+=Math.floor(it.p/2);return `${it.n}を拾ったが、売り払った。`;
+}
+function chest(){
+  const th=G.party.some(p=>p.c==='盗賊'&&p.hp>0);let tr='';
+  if(Math.random()<(th?.12:.4)){const d=10;G.party.forEach(p=>{if(p.hp>0)p.hp=Math.max(1,p.hp-d)});tr=`罠だ！毒矢が飛び出し、全員に${d}のダメージ。`}
+  const g=rnd(30,60)*G.F;G.gold+=g;let s=tr+`宝箱を見つけた。${g}Gを手に入れた。`;
+  if(Math.random()<.5){const n=rnd(1,2);G.herb+=n;s+=`薬草を${n}個拾った。`}
+  if(Math.random()<.5){const t=Math.min(5,Math.floor((G.F-1)/2)+(Math.random()<.3?1:0));
+    s+=give(Math.random()<.5?{k:'w',...WEP[t]}:{k:'a',...ARM[t]})}
+  log(s);
+}
+function enter(f,end){
+  G.F=f;G.maxF=Math.max(G.maxF,f);MAP=gen(f);[G.x,G.y]=end?MAP.d:[1,1];
+  G.d=DIRS.findIndex(([a,b])=>open(G.x+a,G.y+b));see();log(f===1&&!end?'入口の街に戻った。':`地下${f}階。`);render();
+}
+const stairs=d=>enter(G.F+d,d<0),warp=()=>enter(G.maxF,false);
+function useOrb(){if(G.orb<1){log('帰還の玉を持っていない。');return render()}G.orb--;enter(1,false)}
+function menu(m){G.menu=m;render()}
+function loopState(){return{...G,mode:'explore',boss:false,chests:{},seen:new Set(),F:1,maxF:1,x:1,y:1,d:2,steps:0,loop:(G.loop||0)+1,seed:Math.floor(Math.random()*1e9),menu:null,enemies:[]}}
+function newLoop(){
+  G=loopState();MAP=gen(1);G.d=Math.max(0,DIRS.findIndex(([a,b])=>open(1+a,1+b)));see();
+  G.log=[`${G.loop+1}周目の始まり。迷宮の構造が変わり、敵も強くなった。`];render();
+}
+function doRename(){
+  G.party.forEach((p,i)=>{const v=document.getElementById('rn'+i).value.replace(/[<>&"']/g,'').trim();if(v)p.n=v});
+  G.menu=null;log('名前を変更した。');render();
+}
+function useHerb(i){
+  const p=G.party[i];
+  if(G.herb<1||p.hp<=0)log('薬草は使えない。');
+  else{G.herb--;p.hp=Math.min(p.max,p.hp+30);log(`${p.n}は薬草でHP30回復した。`)}
+  G.menu=null;render();
+}
+function buy(k,i){
+  const it=k==='herb'?{p:20}:k==='orb'?{p:100}:k==='w'?{k,...WEP[i]}:{k,...ARM[i]};
+  if(G.gold<it.p){log('お金が足りない。');return render()}
+  if(k==='herb')G.herb++;else if(k==='orb')G.orb++;
+  else{
+    const f=k==='w'?'w':'ar',v=k==='w'?'a':'d';
+    if(!G.party.some(p=>p.hp>0&&(p[f]?p[f][v]:0)<it[v])){log('今の装備で十分だ。');return render()}
+    log(give(it));
+  }
+  G.gold-=it.p;render();
+}
+function extra(){
+  const c=MAP[G.y][G.x],wide='class="main" style="width:100%;margin-bottom:6px"';let h='';
+  if(G.F===1&&c==='S')h+=`<div class="row"><button onclick="rest()">宿で休む（10G）</button><button onclick="revive()">蘇生する（80G）</button><button onclick="menu('shop')">店</button>${G.maxF>1?`<button onclick="warp()">最深階へ（地下${G.maxF}階）</button>`:''}</div>`;
+  if(c==='S'&&G.F>1)h+=`<button ${wide} onclick="stairs(-1)">階段を上る</button>`;
+  if(c==='D')h+=`<button ${wide} onclick="stairs(1)">階段を下りる</button>`;
+  return h+`<div class="row"><button onclick="menu('herb')">薬草（${G.herb}）</button><button onclick="useOrb()">帰還の玉（${G.orb}）</button><button onclick="menu('rename')">名前変更</button></div>`;
+}
+function menuView(){
+  const back='<button style="width:100%" onclick="menu(null)">戻る</button>';
+  if(G.menu==='rename')return `<p class="who">名前を変更（6文字まで）</p>${G.party.map((p,i)=>`<div class="row"><input id="rn${i}" value="${p.n}" maxlength="6" aria-label="${p.c}の名前"></div>`).join('')}<button class="main" style="width:100%;margin-bottom:6px" onclick="doRename()">決定</button>${back}`;
+  if(G.menu==='herb')return `<p class="who">薬草（${G.herb}）を誰に使う？</p><div class="row">${G.party.map((p,i)=>`<button onclick="useHerb(${i})">${p.n}（${p.hp}/${p.max}）</button>`).join('')}</div>${back}`;
+  return `<p class="who">店　所持金 ${G.gold}G</p><div class="row"><button onclick="buy('herb')">薬草 20G</button><button onclick="buy('orb')">帰還の玉 100G</button>${WEP.map((w,i)=>`<button onclick="buy('w',${i})">${w.n} 攻+${w.a}　${w.p}G</button>`).join('')}${ARM.map((a,i)=>`<button onclick="buy('a',${i})">${a.n} 防+${a.d}　${a.p}G</button>`).join('')}</div>${back}`;
+}
+function go(k){
+  const[dx,dy]=DIRS[(G.d+k)%4],nx=G.x+dx,ny=G.y+dy;
+  if(!open(nx,ny)){log('石壁に阻まれた。');return render()}
+  G.x=nx;G.y=ny;G.steps++;see();
+  const c=MAP[ny][nx],key=G.F+':'+nx+','+ny;
+  if(c==='T'&&!G.chests[key]){G.chests[key]=1;chest()}
+  if(c==='B'&&!G.boss){log('玉座の間。大魔導師ヴォルグがゆっくりと振り向いた。');return battle(true)}
+  if(c!=='S'&&Math.random()<.17)return battle(false);
+  render();
+}
+const DIRS=[[0,-1],[1,0],[0,1],[-1,0]],DN=['北','東','南','西'],ARW='▲▶▼◀';
+const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const mk=(n,c,hp,mp,atk)=>({n,c,hp,max:hp,mp,mmp:mp,atk,lv:1,xp:0,def:false});
+let G;
+function startGame(party){
+  G={party,seed:Math.floor(Math.random()*1e9),herb:2,orb:0,F:1,maxF:1,menu:null,
+  gold:150,x:1,y:1,d:2,steps:0,seen:new Set(),mode:'explore',chests:{},boss:false,
+  log:['迷宮の入口に立った。奥には大魔導師が潜むという。']};MAP=gen(1);
+  see();render();
+}
+const log=s=>G.log.push(s);
+function see(){for(let j=-1;j<=1;j++)for(let i=-1;i<=1;i++)G.seen.add(G.F+':'+(G.x+i)+','+(G.y+j));}
+const open=(x,y)=>MAP[y][x]!=='#';
+function front(){let n=0,x=G.x,y=G.y;const[dx,dy]=DIRS[G.d];while(open(x+dx,y+dy)){x+=dx;y+=dy;n++}return n}
+function side(k){const[dx,dy]=DIRS[(G.d+k)%4];return open(G.x+dx,G.y+dy)}
+function turn(k){G.d=(G.d+k)%4;render()}
+function rest(){
+  if(G.gold<10){log('宿代の10Gが足りない。');return render()}
+  G.gold-=10;G.party.forEach(p=>{if(p.hp>0){p.hp=p.max;p.mp=p.mmp}});log('宿で眠り、生きている仲間は全回復した。');render();
+}
+function revive(){
+  const i=G.party.findIndex(p=>p.hp<=0);
+  if(i<0||G.gold<80){log(i<0?'蘇生が必要な仲間はいない。':'蘇生には80G必要だ。');return render()}
+  G.gold-=80;const p=G.party[i];
+  if(Math.random()<.7){p.hp=Math.ceil(p.max/2);log(`${p.n}は蘇生した。`)}
+  else{G.party.splice(i,1);log(`蘇生は失敗した。${p.n}は灰になった（ロスト）。`)}
+  render();
+}
+function battle(boss){
+  let es;
+  if(boss)es=[{...BOSS}];
+  else{const t=G.F-1,n=rnd(1,3);
+    es=Array.from({length:n},()=>({...EN[Math.max(0,Math.min(9,t+rnd(-1,0)))]}));
+    if(n>1)es.forEach((e,i)=>e.n+=' '+'ABC'[i]);}
+  const k=1+.5*(G.loop||0);es.forEach(e=>{e.hp=Math.round(e.hp*k);e.atk=Math.round(e.atk*k);e.xp=Math.round(e.xp*k);e.g=Math.round(e.g*k);e.max=e.hp});
+  Object.assign(G,{mode:'battle',auto:false,enemies:es,isBoss:boss,round:1,actions:[],pending:null,cur:G.party.findIndex(p=>p.hp>0)});
+  log(es.map(e=>e.n).join('、')+'が現れた！');render();
+}
+function act(t){
+  const m=G.party[G.cur];
+  if(t==='auto'){G.auto=true;return render()}
+  if(t==='atk'){G.pending='atk';return render()}
+  if(t==='spell'){
+    if(m.c==='魔術師'){if(m.mp<3){log('MPが足りない。');return render()}return push({t:'fire'})}
+    if(m.mp<2){log('MPが足りない。');return render()}
+    G.pending='heal';return render();
+  }
+  if(t==='item'){if(G.herb<1){log('薬草がない。');return render()}G.pending='herb';return render()}
+  if(t==='def')return push({t:'def'});
+  if(t==='run')return run();
+}
+function push(a){a.m=G.cur;G.actions.push(a);G.pending=null;advance()}
+function advance(){
+  let n=G.cur+1;while(n<G.party.length&&G.party[n].hp<=0)n++;
+  if(n>=G.party.length)resolve();else{G.cur=n;render()}
+}
+const tgt=i=>G.pending==='atk'&&push({t:'atk',tg:i});
+function healT(i){if(G.pending==='heal')push({t:'heal',tg:i});else if(G.pending==='herb')push({t:'herb',tg:i})}
+const cancel=()=>{G.pending=null;render()};
+function run(){
+  if(G.isBoss){log('ヴォルグからは逃げられない！');return render()}
+  if(Math.random()<.5){log('パーティは逃げ出した。');G.mode='explore';return render()}
+  log('逃げられなかった！');enemiesTurn();
+}
+function hurt(e,d){e.hp-=d;if(e.hp<=0)log(`${e.n}を倒した。`)}
+function resolve(){
+  for(const a of G.actions){
+    const m=G.party[a.m];if(m.hp<=0)continue;
+    const live=G.enemies.filter(e=>e.hp>0);
+    if(a.t==='atk'){
+      let e=G.enemies[a.tg];if(!e||e.hp<=0)e=live[0];
+      let d=m.atk+(m.w?m.w.a:0)+rnd(0,m.lv+3),c='';
+      if(m.c==='盗賊'&&Math.random()<.25){d*=2;c='急所を突いた！'}
+      log(`${m.n}の攻撃！${c}${e.n}に${d}のダメージ。`);hurt(e,d);
+    }else if(a.t==='fire'){
+      m.mp-=3;const d=rnd(7,10)+m.lv*2;
+      log(`${m.n}の火球！敵全体に${d}のダメージ。`);live.forEach(e=>hurt(e,d));
+    }else if(a.t==='heal'){
+      m.mp-=2;const t=G.party[a.tg];
+      if(t.hp<=0)log(`${m.n}の癒し。${t.n}には効かなかった。`);
+      else{const h=rnd(10,14)+m.lv*3;t.hp=Math.min(t.max,t.hp+h);log(`${m.n}の癒し。${t.n}のHPが${h}回復。`)}
+    }else if(a.t==='herb'){const t=G.party[a.tg];if(G.herb>0&&t.hp>0){G.herb--;t.hp=Math.min(t.max,t.hp+30);log(`${m.n}は${t.n}に薬草を使った。HP30回復。`)}else log('薬草は効かなかった。')}else if(a.t==='def'){m.def=true;log(`${m.n}は身を固めた。`)}
+    if(!G.enemies.some(e=>e.hp>0))return victory();
+  }
+  enemiesTurn();
+}
+function enemiesTurn(){
+  const alive=()=>G.party.filter(p=>p.hp>0);
+  const dmg=(p,d)=>{p.hp-=d;if(p.hp<=0){p.hp=0;log(`${p.n}は倒れた…`)}};
+  for(const e of G.enemies){
+    if(e.hp<=0||!alive().length)continue;
+    if(e.boss&&G.round%3===0){const d=rnd(10,16);log(`${e.n}の闇の炎！全員に${d}のダメージ。`);alive().forEach(p=>dmg(p,d));continue}
+    const al=alive(),p=al[rnd(0,al.length-1)];
+    if(Math.random()<.15){log(`${e.n}の攻撃は外れた。`);continue}
+    let d=rnd(Math.ceil(e.atk*.6),e.atk);d=Math.max(1,d-(p.ar?p.ar.d:0));if(p.def)d=Math.max(1,Math.floor(d/2));
+    log(`${e.n}の攻撃！${p.n}に${d}のダメージ。`);dmg(p,d);
+  }
+  G.party.forEach(p=>p.def=false);
+  if(!alive().length){G.mode='over';log('パーティは全滅した…');return render()}
+  G.round++;G.actions=[];G.pending=null;G.cur=G.party.findIndex(p=>p.hp>0);render();
+}
+function victory(){
+  const xp=G.enemies.reduce((s,e)=>s+e.xp,0),g=G.enemies.reduce((s,e)=>s+e.g,0);
+  const al=G.party.filter(p=>p.hp>0),each=Math.ceil(xp/al.length);
+  G.gold+=g;log(`勝利！ 各自${each}の経験値と${g}Gを得た。`);if(Math.random()<.25){G.herb++;log('薬草を拾った。')}
+  al.forEach(m=>{m.xp+=each;while(m.xp>=m.lv*25){
+    m.xp-=m.lv*25;m.lv++;const u=rnd(6,10)+(m.c==='戦士'?3:0);m.max+=u;m.hp+=u;
+    if(m.mmp){m.mmp+=2;m.mp+=2}m.atk++;
+    log(`${m.n}はレベル${m.lv}に上がった！`)}});
+  if(G.isBoss){G.boss=true;G.mode='win'}else G.mode='explore';
+  G.enemies=[];render();
+}
+function mapHtml(){
+  let h='';
+  for(let y=0;y<11;y++)for(let x=0;x<11;x++){
+    if(x===G.x&&y===G.y){h+=`<i class="p">${ARW[G.d]}</i>`;continue}
+    if(!G.seen.has(G.F+':'+x+','+y)){h+='<i></i>';continue}
+    const c=MAP[y][x];
+    if(c==='#')h+='<i class="w"></i>';
+    else if(c==='T'&&!G.chests[G.F+':'+x+','+y])h+='<i class="f">◇</i>';
+    else if(c==='B'&&!G.boss)h+='<i class="f">☠</i>';
+    else if(c==='D')h+='<i class="f">▽</i>';else h+='<i class="f"></i>';
+  }
+  return `<div class="map" aria-label="地図">${h}</div>`;
+}
+function exploreView(){
+  const f=front();
+  const main=`<div class="stage"><div class="view"><p>${f===0?'目の前は冷たい石壁だ。':`通路が${f}マス先まで続いている。`}</p>
+  <small>左：${side(3)?'脇道がある':'壁'}</small><small>右：${side(1)?'脇道がある':'壁'}</small><small>地下${G.F}階　向き：${DN[G.d]}（${G.steps}歩）</small></div>${mapHtml()}</div>`;
+  let ctl=`<div class="dpad"><span></span><button class="main" onclick="go(0)">前進</button><span></span>
+  <button onclick="turn(3)">左を向く</button><button onclick="go(2)">後退</button><button onclick="turn(1)">右を向く</button></div>`;
+  
+  return[main,G.menu?menuView():ctl+extra()];
+}
+function battleView(){
+  const pend=G.pending==='atk';
+  const foes=`<div class="foes${G.isBoss?' boss':''}">${G.enemies.map(e=>`<figure class="${e.hp<=0?'gone':''}">${spr(e.n)}<figcaption>${e.n}</figcaption></figure>`).join('')}</div>`;
+  const main=foes+G.enemies.map((e,i)=>`<button class="en${e.hp<=0?' dead':''}" ${pend&&e.hp>0?'':'disabled'} onclick="tgt(${i})"><span>${e.n}</span><span class="bar"><s style="width:${Math.max(0,e.hp)/e.max*100}%"></s></span></button>`).join('');
+  const m=G.party[G.cur];let ctl;
+  if(G.auto)ctl='<p class="who">オート戦闘中…</p><button class="main" style="width:100%" onclick="G.auto=false;render()">停止</button>';
+  else if(G.pending==='atk')ctl=`<p class="who">${m.n}：誰を攻撃する？</p><button onclick="cancel()">戻る</button>`;
+  else if(G.pending==='heal'||G.pending==='herb')ctl=`<p class="who">${m.n}：誰を癒す？</p><div class="row">${G.party.map((p,i)=>`<button onclick="healT(${i})">${p.n}（${p.hp}/${p.max}）</button>`).join('')}</div><button onclick="cancel()">戻る</button>`;
+  else{
+    const sp=m.c==='魔術師'?'火球（MP3）':m.c==='僧侶'?'癒し（MP2）':'';
+    ctl=`<p class="who">${m.n}はどうする？</p><div class="row"><button class="main" onclick="act('atk')">攻撃</button>${sp?`<button onclick="act('spell')">${sp}</button>`:'<span></span>'}<button onclick="act('def')">防御</button><button onclick="act('item')">薬草（${G.herb}）</button><button onclick="act('run')">逃げる</button><button onclick="act('auto')">オート</button></div>`;
+  }
+  return[main,ctl];
+}
+function endView(){
+  const win=G.mode==='win';
+  return[`<div class="stage"><div class="view"><p>${win?'大魔導師ヴォルグは崩れ落ち、迷宮に静けさが戻った。あなたたちの勝利だ。':'暗闇の中で、最後の灯りが消えた。'}</p></div></div>`,
+  `${win?`<button class="main" style="width:100%;margin-bottom:6px" onclick="newLoop()">データを引き継いで1階から（${(G.loop||0)+2}周目）</button><button style="width:100%" onclick="newGame()">新しく作り直す</button>`:`<button class="main" style="width:100%" onclick="newGame()">最初からやり直す</button>`}`];
+}
+function render0(){
+  const [main,ctl]=G.mode==='explore'?exploreView():G.mode==='battle'?battleView():endView();
+  document.getElementById('app').innerHTML='<h1>暗黒の螺旋回廊</h1><div class="party">'+G.party.map((m,i)=>
+    `<div class="pm${m.hp<=0?' dead':''}${G.mode==='battle'&&i===G.cur?' cur':''}"><b>${m.n}</b><i>${m.c} Lv${m.lv}</i>${gb('HP',m.hp,m.max,'')}${gb('MP',m.mp,m.mmp,'mp')}<span>攻+${m.w?m.w.a:0} 防+${m.ar?m.ar.d:0}</span></div>`).join('')
+    +`</div><div class="gold">所持金 ${G.gold}G</div>${main}<div class="log">${G.log.slice(-6).map(l=>`<p>${l}</p>`).join('')}</div>${ctl}`;
+}
+let AC,mg,NB,bgm='',muted=false,step=0,nextT=0;
+try{muted=localStorage.getItem('dungeon-mute')==='1'}catch(e){}
+const N=n=>440*Math.pow(2,(n-69)/12);
+const seg=(a,r)=>a.concat(r);
+const FL=[[69,0,72,0,76,0,72,0],[77,0,72,0,69,0,72,0],[74,0,69,0,65,0,69,0],[71,0,76,0,80,0,76,71]];
+const BL=[[76,81,76,72,76,81,76,72],[77,81,77,72,77,81,77,72],[74,77,74,69,74,77,74,69],[76,80,76,71,76,80,83,80]];
+const RT=[45,41,38,40];
+const TR={
+  field:{bpm:80,lead:[].concat(...FL),bass:[].concat(...RT.map(r=>[r,0,r,0,r,0,r+12,0]))},
+  battle:{bpm:156,drum:1,lead:[].concat(...BL),bass:[].concat(...RT.map(r=>[r,r+12,r,r+12,r,r+12,r,r+12]))}
+};
+let PW;
+const hold=(a,i)=>{let k=1;while(a[(i+k)%32]===-1&&k<32)k++;return k};
+TR.field={bpm:60,
+ lead:[69,-1,-1,-1,0,0,72,-1, 70,-1,-1,-1,-1,-1,0,0, 67,-1,0,0,72,-1,-1,-1, 68,-1,-1,-1,69,-1,-1,-1],
+ bass:[38,-1,-1,-1,38,0,45,0, 34,-1,-1,-1,34,0,41,0, 36,-1,-1,-1,36,0,43,0, 33,-1,-1,-1,33,0,40,0]};
+TR.battle={bpm:168,drum:1,
+ lead:[74,0,0,74,0,77,-1,-1, 70,0,0,70,0,74,-1,-1, 72,0,0,72,0,75,-1,-1, 69,0,0,69,0,73,-1,76],
+ bass:[38,38,50,38,38,50,51,50, 34,34,46,34,34,46,47,46, 36,36,48,36,36,48,49,48, 33,33,45,33,33,45,46,45]};
+function tone(type,f,t,d,v){
+  const o=AC.createOscillator(),g=AC.createGain();if(type==='pulse')o.setPeriodicWave(PW);else o.type=type;o.frequency.value=f;
+  g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);
+  o.connect(g);g.connect(mg);o.start(t);o.stop(t+d+.02);
+}
+function noise(t,d,v){
+  const s=AC.createBufferSource(),g=AC.createGain();s.buffer=NB;
+  g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);
+  s.connect(g);g.connect(mg);s.start(t);s.stop(t+d+.02);
+}
+function drum(i,t){
+  if(i%2)noise(t,.03,.025);
+  if(i%8===2||i%8===6)noise(t,.1,.07);
+  if(i%8===0){const o=AC.createOscillator(),g=AC.createGain();o.frequency.setValueAtTime(140,t);o.frequency.exponentialRampToValueAtTime(40,t+.1);
+    g.gain.setValueAtTime(.18,t);g.gain.exponentialRampToValueAtTime(.001,t+.12);o.connect(g);g.connect(mg);o.start(t);o.stop(t+.14)}
+}
+function sched(){
+  if(!AC||muted||!bgm)return;
+  const T=TR[bgm],sd=30/T.bpm;
+  while(nextT<AC.currentTime+.3){
+    const i=step%32,l=T.lead[i],b=T.bass[i];
+    if(l>0)tone('pulse',N(l),nextT,sd*hold(T.lead,i)*.95,.06);
+    if(b>0)tone('triangle',N(b),nextT,sd*hold(T.bass,i)*.95,.14);
+    if(T.drum)drum(i,nextT);
+    nextT+=sd;step++;
+  }
+}
+function setBgm(n){if(n===bgm)return;bgm=n;step=0;if(AC)nextT=AC.currentTime+.05}
+function bgmStart(){
+  if(!AC){
+    AC=new(window.AudioContext||window.webkitAudioContext)();mg=AC.createGain();mg.gain.value=.5;mg.connect(AC.destination);
+    const re=new Float32Array(32),im=new Float32Array(32);for(let k=1;k<32;k++)im[k]=2/(k*Math.PI)*Math.sin(k*Math.PI*.25);PW=AC.createPeriodicWave(re,im);
+    NB=AC.createBuffer(1,AC.sampleRate*.2,AC.sampleRate);const d=NB.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+    nextT=AC.currentTime+.1;setInterval(sched,100);
+  }
+  if(AC.state==='suspended'&&!muted)AC.resume();
+}
+document.addEventListener('pointerdown',bgmStart);
+const mb=document.createElement('button');
+mb.style.cssText='position:fixed;top:calc(8px + env(safe-area-inset-top,0px));right:10px;z-index:5;min-height:36px;padding:2px 10px;font-size:13px';
+const mlabel=()=>{mb.textContent=muted?'BGM OFF':'BGM ON'};
+mb.onclick=()=>{
+  muted=!muted;try{localStorage.setItem('dungeon-mute',muted?'1':'0')}catch(e){}
+  if(AC){if(muted)AC.suspend();else AC.resume()}mlabel();
+};
+mlabel();document.body.appendChild(mb);
+let LANG='ja';try{LANG=localStorage.getItem('dungeon-lang')||'ja'}catch(e){}
+const W={'戦士':'Fighter','僧侶':'Priest','魔術師':'Mage','盗賊':'Thief','ガイウス':'Gaius','ミリア':'Milia','ゼノン':'Zenon','リーゼ':'Liese','スライム':'Slime','ゴブリン':'Goblin','スケルトン':'Skeleton','オーク':'Orc','亡霊':'Specter','石像':'Gargoyle','吸血鬼':'Vampire','魔狼':'Dire Wolf','竜牙兵':'Dragon Warrior','魔神':'Demon','大魔導師ヴォルグ':'Archmage Volg','ヴォルグ':'Volg','薬草':'Herb','帰還の玉':'Return Orb','鉄の剣':'Iron Sword','戦斧':'Battle Axe','鋼の剣':'Steel Sword','聖銀の剣':'Silver Sword','魔剣':'Demon Blade','竜殺しの剣':'Dragonslayer','革の鎧':'Leather Armor','鎖帷子':'Chainmail','鋼の鎧':'Steel Armor','聖銀の鎧':'Silver Armor','魔鎧':'Demon Armor','竜鱗の鎧':'Dragon Scale Armor','北':'North','東':'East','南':'South','西':'West'};
+const WK=Object.keys(W).sort((a,b)=>b.length-a.length);
+const E={'暗黒の螺旋回廊':'The Dark Spiral','名前と職業を選んで、4人の冒険者を作ろう。':'Choose names and classes for your four adventurers.','冒険を始める':'Begin the adventure','続きから':'Continue','前進':'Forward','後退':'Step back','左を向く':'Turn left','右を向く':'Turn right','宿で休む（10G）':'Rest at inn (10G)','蘇生する（80G）':'Revive (80G)','店':'Shop','階段を上る':'Go up stairs','階段を下りる':'Go down stairs','名前変更':'Rename','戻る':'Back','決定':'OK','名前を変更（6文字まで）':'Rename (up to 6 chars)','目の前は冷たい石壁だ。':'A cold stone wall lies ahead.','攻撃':'Attack','防御':'Defend','逃げる':'Run','オート':'Auto','オート戦闘中…':'Auto battle...','停止':'Stop','火球（MP3）':'Fireball (MP3)','癒し（MP2）':'Heal (MP2)','薬草 20G':'Herb 20G','帰還の玉 100G':'Return Orb 100G','新しく作り直す':'Create a new party','最初からやり直す':'Start over','大魔導師ヴォルグは崩れ落ち、迷宮に静けさが戻った。あなたたちの勝利だ。':'Archmage Volg collapses and silence returns to the dungeon. Victory is yours.','暗闇の中で、最後の灯りが消えた。':'In the darkness, the last light goes out.'};
+const U=[
+[/^所持金 (\d+)G$/,'Gold: $1G'],
+[/^通路が(\d+)マス先まで続いている。$/,'The corridor continues $1 squares ahead.'],
+[/^左：(.+)$/,(m,a)=>'Left: '+(a==='壁'?'wall':'side path')],
+[/^右：(.+)$/,(m,a)=>'Right: '+(a==='壁'?'wall':'side path')],
+[/^地下(\d+)階\u3000向き：(.)（(\d+)歩）$/,'B$1F, facing $2 ($3 steps)'],
+[/^最深階へ（地下(\d+)階）$/,'To deepest floor (B$1F)'],
+[/^薬草（(\d+)）を誰に使う？$/,'Use a herb ($1) on whom?'],
+[/^薬草（(\d+)）$/,'Herbs ($1)'],
+[/^帰還の玉（(\d+)）$/,'Return Orb ($1)'],
+[/^店\u3000所持金 (\d+)G$/,'Shop - Gold: $1G'],
+[/^(.+) 攻\+(\d+)\u3000(\d+)G$/,'$1 ATK+$2, $3G'],
+[/^(.+) 防\+(\d+)\u3000(\d+)G$/,'$1 DEF+$2, $3G'],
+[/^攻\+(\d+) 防\+(\d+)$/,'ATK+$1 DEF+$2'],
+[/^(.+)：誰を攻撃する？$/,'$1: attack whom?'],
+[/^(.+)：誰を癒す？$/,'$1: heal whom?'],
+[/^(.+)はどうする？$/,'What will $1 do?'],
+[/^データを引き継いで1階から（(\d+)周目）$/,'Carry over data and restart from B1F (loop $1)']
+];
+const S=[
+[/^罠だ！$/,'A trap!'],[/^毒矢が飛び出し、全員に(\d+)のダメージ。$/,'Poison darts hit everyone for $1 damage.'],
+[/^宝箱を見つけた。$/,'Found a chest.'],[/^(\d+)Gを手に入れた。$/,'Got $1G.'],[/^薬草を(\d+)個拾った。$/,'Picked up $1 herb(s).'],
+[/^(.+)を(.+)が装備した。$/,'$2 equipped $1.'],[/^(.+)を拾ったが、売り払った。$/,'Found $1 but sold it.'],
+[/^玉座の間。$/,'The throne room.'],[/^大魔導師ヴォルグがゆっくりと振り向いた。$/,'Archmage Volg slowly turns around.'],
+[/^迷宮の入口に立った。$/,'You stand at the dungeon entrance.'],[/^奥には大魔導師が潜むという。$/,'They say an archmage lurks deep below.'],
+[/^石壁に阻まれた。$/,'Blocked by a stone wall.'],[/^地下(\d+)階。$/,'Basement floor $1.'],[/^入口の街に戻った。$/,'Returned to the town at the entrance.'],
+[/^帰還の玉を持っていない。$/,'You have no Return Orb.'],[/^薬草は使えない。$/,'You cannot use a herb.'],[/^(.+)は薬草でHP30回復した。$/,'$1 recovered 30 HP with a herb.'],
+[/^お金が足りない。$/,'Not enough gold.'],[/^今の装備で十分だ。$/,'Your current gear is good enough.'],[/^宿代の10Gが足りない。$/,'You need 10G for the inn.'],
+[/^宿で眠り、生きている仲間は全回復した。$/,'Rested at the inn. Living members fully recovered.'],[/^蘇生が必要な仲間はいない。$/,'No one needs reviving.'],[/^蘇生には80G必要だ。$/,'Reviving costs 80G.'],
+[/^(.+)は蘇生した。$/,'$1 was revived.'],[/^蘇生は失敗した。$/,'The revival failed.'],[/^(.+)は灰になった（ロスト）。$/,'$1 turned to ashes (lost).'],
+[/^名前を変更した。$/,'Names changed.'],[/^冒険を再開した。$/,'Adventure resumed.'],[/^(\d+)周目の始まり。$/,'Loop $1 begins.'],[/^迷宮の構造が変わり、敵も強くなった。$/,'The maze has changed and the enemies are stronger.'],
+[/^薬草がない。$/,'No herbs left.'],[/^MPが足りない。$/,'Not enough MP.'],[/^ヴォルグからは逃げられない！$/,'You cannot flee from Volg!'],[/^パーティは逃げ出した。$/,'The party fled.'],[/^逃げられなかった！$/,'Could not escape!'],
+[/^(.+)が現れた！$/,(m,a)=>a.replace(/、/g,', ')+' appear!'],[/^(.+)を倒した。$/,'$1 was defeated.'],[/^(.+)の攻撃！$/,'$1 attacks!'],[/^急所を突いた！$/,'Critical hit!'],
+[/^敵全体に(\d+)のダメージ。$/,'Every enemy takes $1 damage.'],[/^全員に(\d+)のダメージ。$/,'Everyone takes $1 damage.'],[/^(.+)に(\d+)のダメージ。$/,'$1 takes $2 damage.'],
+[/^(.+)の火球！$/,'$1 casts Fireball!'],[/^(.+)の癒し。$/,'$1 casts Heal.'],[/^(.+)には効かなかった。$/,'It had no effect on $1.'],[/^(.+)のHPが(\d+)回復。$/,'$1 recovers $2 HP.'],
+[/^(.+)は(.+)に薬草を使った。$/,'$1 used a herb on $2.'],[/^HP30回復。$/,'Recovered 30 HP.'],[/^薬草は効かなかった。$/,'The herb had no effect.'],[/^(.+)は身を固めた。$/,'$1 braces for attacks.'],
+[/^(.+)の闇の炎！$/,'$1 unleashes Dark Flame!'],[/^(.+)は倒れた…$/,'$1 has fallen...'],[/^(.+)の攻撃は外れた。$/,"$1's attack missed."],[/^パーティは全滅した…$/,'The party was wiped out...'],
+[/^勝利！$/,'Victory!'],[/^各自(\d+)の経験値と(\d+)Gを得た。$/,'Each member gains $1 XP and $2G.'],[/^薬草を拾った。$/,'Found a herb.'],[/^(.+)はレベル(\d+)に上がった！$/,'$1 reached level $2!']
+];
+const pun=s=>s.replace(/（/g,' (').replace(/）/g,')').replace(/\u3000/g,' ').replace(/：/g,': ').replace(/、/g,', ').replace(/。/g,'.').replace(/！/g,'!').replace(/…/g,'...');
+function trT(t,lg){
+  const s=t.trim();let o=s;
+  if(lg)o=(s.match(/[^。！…]*[。！…]|[^。！…]+$/g)||[]).map(x=>{x=x.trim();for(const[r,p]of S)if(r.test(x))return x.replace(r,p);return x}).join(' ');
+  else if(E[s])o=E[s];
+  else for(const[r,p]of U)if(r.test(s)){o=s.replace(r,p);break}
+  WK.forEach(k=>{o=o.split(k).join(W[k])});
+  return pun(o);
+}
+function tx(root){
+  if(LANG!=='en')return;
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),a=[];
+  while(w.nextNode())a.push(w.currentNode);
+  a.forEach(n=>{if(n.nodeValue.trim())n.nodeValue=trT(n.nodeValue,!!(n.parentElement&&n.parentElement.closest('.log')))});
+  root.querySelectorAll('input').forEach(i=>{i.value=trT(i.value,false)});
+}
+const lb=document.createElement('button');
+lb.style.cssText='position:fixed;top:calc(8px + env(safe-area-inset-top,0px));right:108px;z-index:5;min-height:36px;padding:2px 10px;font-size:13px';
+const llabel=()=>{lb.textContent=LANG==='en'?'日本語':'English';document.documentElement.lang=LANG};
+lb.onclick=()=>{LANG=LANG==='en'?'ja':'en';try{localStorage.setItem('dungeon-lang',LANG)}catch(e){}llabel();render()};
+llabel();document.body.appendChild(lb);
+newGame();
+</script></body></html>
