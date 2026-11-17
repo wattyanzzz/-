@@ -1,1455 +1,521 @@
 <!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CYBER SURVIVOR: Text Battle Royale</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome for Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
-
-    <style>
-        body {
-            font-family: 'Noto Sans JP', 'Fira Code', monospace;
-            background-color: #090d16;
-            color: #d1d5db;
-            user-select: none;
-        }
-
-        /* カスタムスクロールバー */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #0f172a;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #334155;
-            border-radius: 3px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #475569;
-        }
-
-        /* 光るエフェクト */
-        .glow-green {
-            text-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
-        }
-        .glow-red {
-            text-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
-        }
-        .glow-cyan {
-            text-shadow: 0 0 8px rgba(6, 182, 212, 0.6);
-        }
-
-        /* ターミナル風パルス */
-        .pulse-border {
-            box-shadow: 0 0 15px rgba(6, 182, 212, 0.15);
-            border: 1px solid rgba(6, 182, 212, 0.3);
-        }
-
-        .danger-pulse {
-            animation: pulse-red 2s infinite;
-        }
-
-        @keyframes pulse-red {
-            0%, 100% { border-color: rgba(239, 68, 68, 0.4); box-shadow: 0 0 10px rgba(239, 68, 68, 0.2); }
-            50% { border-color: rgba(239, 68, 68, 0.9); box-shadow: 0 0 20px rgba(239, 68, 68, 0.5); }
-        }
-
-        /* 戦闘演出用アニメーション */
-        @keyframes shake {
-            0%, 100% { transform: translate(0, 0) rotate(0deg); }
-            20% { transform: translate(-6px, 4px) rotate(-1deg); }
-            40% { transform: translate(6px, -4px) rotate(1deg); }
-            60% { transform: translate(-4px, -2px) rotate(-0.5deg); }
-            80% { transform: translate(4px, 2px) rotate(0.5deg); }
-        }
-
-        .shake-effect {
-            animation: shake 0.35s cubic-bezier(.36,.07,.19,.97) both;
-        }
-
-        @keyframes damage-pop {
-            0% { opacity: 0; transform: translate(-50%, -20%) scale(0.5); }
-            30% { opacity: 1; transform: translate(-50%, -70%) scale(1.3); }
-            70% { opacity: 1; transform: translate(-50%, -100%) scale(1.0); }
-            100% { opacity: 0; transform: translate(-50%, -130%) scale(0.8); }
-        }
-
-        .damage-pop-el {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            pointer-events: none;
-            z-index: 60;
-            font-weight: 900;
-            font-family: 'Fira Code', monospace;
-            animation: damage-pop 0.85s forwards ease-out;
-            text-shadow: 0 0 10px rgba(0,0,0,0.9);
-        }
-
-        @keyframes flash-red {
-            0% { opacity: 0.6; }
-            100% { opacity: 0; }
-        }
-
-        .hit-flash {
-            position: fixed;
-            inset: 0;
-            background-color: rgba(239, 68, 68, 0.3);
-            pointer-events: none;
-            z-index: 45;
-            animation: flash-red 0.3s forwards ease-out;
-        }
-
-        .crit-flash {
-            position: fixed;
-            inset: 0;
-            background-color: rgba(245, 158, 11, 0.35);
-            pointer-events: none;
-            z-index: 45;
-            animation: flash-red 0.4s forwards ease-out;
-        }
-
-        /* 斬撃・銃撃ヒット時のスラッシュアニメーション */
-        @keyframes slash-anim {
-            0% {
-                opacity: 0;
-                transform: translate(-50%, -50%) rotate(-45deg) scaleX(0);
-            }
-            30% {
-                opacity: 1;
-                transform: translate(-50%, -50%) rotate(-45deg) scaleX(1.4);
-            }
-            100% {
-                opacity: 0;
-                transform: translate(-50%, -50%) rotate(-45deg) scaleX(1.8);
-            }
-        }
-
-        .slash-effect {
-            position: absolute;
-            left: 50%;
-            top: 45%;
-            width: 140%;
-            height: 4px;
-            background: linear-gradient(90deg, transparent, #06b6d4, #ffffff, #06b6d4, transparent);
-            box-shadow: 0 0 15px #06b6d4, 0 0 30px #ffffff;
-            pointer-events: none;
-            z-index: 55;
-            animation: slash-anim 0.35s ease-out forwards;
-        }
-
-        .slash-effect-crit {
-            position: absolute;
-            left: 50%;
-            top: 45%;
-            width: 160%;
-            height: 8px;
-            background: linear-gradient(90deg, transparent, #f59e0b, #ffffff, #ef4444, transparent);
-            box-shadow: 0 0 20px #f59e0b, 0 0 40px #ef4444;
-            pointer-events: none;
-            z-index: 55;
-            animation: slash-anim 0.4s ease-out forwards;
-        }
-    </style>
-</head>
-<body class="min-h-screen bg-slate-950 flex flex-col overflow-y-auto lg:overflow-hidden">
-
-    <!-- App Container -->
-    <div id="app" class="flex flex-col flex-1 max-w-7xl w-full mx-auto p-2 sm:p-4 gap-3">
-
-        <!-- HEADER / STATUS TOP BAR -->
-        <header class="bg-slate-900/90 backdrop-blur border border-slate-800 rounded-xl p-3 flex flex-wrap items-center justify-between shadow-lg gap-2 shrink-0">
-            <div class="flex items-center gap-3">
-                <i class="fa-solid font-bold text-2xl text-cyan-400 fa-crosshairs glow-cyan"></i>
-                <div>
-                    <h1 class="text-base sm:text-lg font-bold tracking-wider text-cyan-400 glow-cyan leading-none">CYBER SURVIVOR</h1>
-                    <span class="text-xs text-slate-500">ZONE-99 BATTLE ROYALE TERMINAL</span>
-                </div>
-            </div>
-
-            <!-- Global Match Info -->
-            <div class="flex items-center gap-4 text-xs sm:text-sm">
-                <!-- BGM Control Button -->
-                <button id="btn-toggle-bgm" class="bg-slate-950/80 hover:bg-slate-800 px-3 py-1.5 rounded-lg border border-cyan-500/40 text-cyan-400 flex items-center gap-2 transition">
-                    <i id="bgm-icon" class="fa-solid fa-volume-xmark"></i>
-                    <span id="bgm-status-text" class="font-mono text-xs">BGM: OFF</span>
-                </button>
-                <div class="bg-slate-950/80 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-2">
-                    <i class="fa-solid fa-users text-emerald-400"></i>
-                    <span>生存者: <strong id="header-alive" class="text-emerald-400 text-base">100</strong> / <span id="header-total">100</span></span>
-                </div>
-                <div class="bg-slate-950/80 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-2">
-                    <i class="fa-solid fa-skull text-red-400"></i>
-                    <span>撃破数: <strong id="header-kills" class="text-red-400 text-base">0</strong></span>
-                </div>
-                <div class="bg-slate-950/80 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-2">
-                    <i class="fa-solid fa-stopwatch text-amber-400"></i>
-                    <span>経過ターン: <strong id="header-turn" class="text-amber-400 text-base">1</strong></span>
-                </div>
-            </div>
-        </header>
-
-        <!-- START SCREEN MODAL OVERLAY -->
-        <div id="start-screen" class="fixed inset-0 z-50 bg-slate-950/95 flex items-center justify-center p-4">
-            <div class="bg-slate-900 border border-cyan-500/40 rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-6 pulse-border">
-                <div class="text-center space-y-2">
-                    <i class="fa-solid fa-radiation text-5xl text-cyan-400 glow-cyan animate-pulse"></i>
-                    <h2 class="text-2xl font-bold text-cyan-400 tracking-wider">CYBER SURVIVOR</h2>
-                    <p class="text-xs text-slate-400">100名による極限バトルロワイヤル。最後の1人を目指せ。</p>
-                </div>
-
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-400 mb-1">コードネーム（名前）</label>
-                        <input type="text" id="player-name-input" value="Operator" maxlength="16" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-cyan-300 focus:outline-none focus:border-cyan-500 font-mono text-sm">
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">戦闘スタイル（パーク）</label>
-                            <select id="player-perk-input" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-500 text-sm">
-                                <option value="assault">アサルト (攻撃力+15%, 初期ハンドガン)</option>
-                                <option value="scout">スカウト (回避率+10%, 発見率UP)</option>
-                                <option value="medic">メディック (回復+30%, 初期救急箱)</option>
-                                <option value="tank">タフネス (最大HP+25, ダメージ10%減)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">参戦BOT人数</label>
-                            <select id="game-difficulty-input" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-500 text-sm">
-                                <option value="easy">10名 (クイックマッチ)</option>
-                                <option value="normal" selected>50名 (スタンダード)</option>
-                                <option value="hard">99名 (フルマッチ)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="bg-slate-950/60 p-3 rounded-lg border border-slate-800 text-xs text-slate-400 space-y-1">
-                        <div class="text-amber-400 font-bold mb-1"><i class="fa-solid fa-play mr-1"></i>ゲーム開始手順</div>
-                        <p>・下部の「START MATCH」ボタンを押すと即座に戦場へ降下します。</p>
-                        <p>・タクティカルマップのセルをクリックするとエリアを簡単に選択・移動できます。</p>
-                    </div>
-                </div>
-
-                <button id="btn-start-game" class="w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-extrabold rounded-xl shadow-lg shadow-cyan-500/20 transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-base tracking-widest border border-cyan-400/30">
-                    <i class="fa-solid fa-play text-lg"></i> START MATCH / 戦場降下
-                </button>
-            </div>
-        </div>
-
-        <!-- MAIN GAME PANEL (GRID LAYOUT) -->
-        <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 min-h-0 overflow-hidden">
-
-            <!-- LEFT COLUMN: Status & Inventory (4 cols) -->
-            <section class="lg:col-span-4 flex flex-col gap-3 min-h-0 overflow-y-auto pr-1">
-                
-                <!-- Player Status Card -->
-                <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 space-y-3">
-                    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-                        <div class="flex items-center gap-2">
-                            <i class="fa-solid fa-user-shield text-cyan-400"></i>
-                            <span id="player-name-display" class="font-bold text-slate-200 text-sm">SURVIVOR</span>
-                        </div>
-                        <span id="player-perk-tag" class="text-[10px] bg-slate-800 text-cyan-400 px-2 py-0.5 rounded border border-cyan-500/30">Assault</span>
-                    </div>
-
-                    <!-- HP Bar -->
-                    <div class="space-y-1">
-                        <div class="flex justify-between text-xs font-semibold">
-                            <span class="text-slate-400"><i class="fa-solid fa-heart text-red-500 mr-1"></i>体 力 (HP)</span>
-                            <span id="hp-text" class="text-red-400">100 / 100</span>
-                        </div>
-                        <div class="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden p-0.5 border border-slate-800">
-                            <div id="hp-bar" class="h-full bg-gradient-to-r from-red-600 to-emerald-500 rounded-full transition-all duration-300" style="width: 100%;"></div>
-                        </div>
-                    </div>
-
-                    <!-- Armor & Combat Stats -->
-                    <div class="grid grid-cols-2 gap-2 text-xs">
-                        <div class="bg-slate-950/80 p-2 rounded-lg border border-slate-800/80">
-                            <div class="text-slate-500 text-[10px]"><i class="fa-solid fa-shield-halved text-blue-400 mr-1"></i>アーマー軽減</div>
-                            <div id="status-armor" class="font-bold text-blue-400 text-sm mt-0.5">0%</div>
-                        </div>
-                        <div class="bg-slate-950/80 p-2 rounded-lg border border-slate-800/80">
-                            <div class="text-slate-500 text-[10px]"><i class="fa-solid fa-gun text-amber-400 mr-1"></i>総攻撃力</div>
-                            <div id="status-atk" class="font-bold text-amber-400 text-sm mt-0.5">10</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Inventory & Equipment Card -->
-                <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 space-y-3 flex-1 flex flex-col min-h-[200px]">
-                    <h3 class="text-xs font-bold text-slate-400 tracking-wider flex items-center justify-between border-b border-slate-800 pb-2">
-                        <span><i class="fa-solid fa-boxes-packing text-cyan-400 mr-1.5"></i>所持品・装備</span>
-                        <span id="inventory-capacity" class="text-[10px] text-slate-500">0/6 Slots</span>
-                    </h3>
-
-                    <!-- Equipment slots -->
-                    <div class="grid grid-cols-2 gap-2 text-xs">
-                        <div class="bg-slate-950 p-2 rounded-lg border border-slate-800 flex items-center gap-2 overflow-hidden">
-                            <i class="fa-solid fa-crosshairs text-amber-400 text-base shrink-0"></i>
-                            <div class="overflow-hidden min-w-0">
-                                <div class="text-[10px] text-slate-500">武器</div>
-                                <div id="eq-weapon" class="font-semibold text-slate-200 truncate text-[11px]">素手 (ATK +0)</div>
-                            </div>
-                        </div>
-                        <div class="bg-slate-950 p-2 rounded-lg border border-slate-800 flex items-center gap-2 overflow-hidden">
-                            <i class="fa-solid fa-vest text-blue-400 text-base shrink-0"></i>
-                            <div class="overflow-hidden min-w-0">
-                                <div class="text-[10px] text-slate-500">防具</div>
-                                <div id="eq-armor" class="font-semibold text-slate-200 truncate text-[11px]">なし (DEF 0%)</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Inventory list -->
-                    <div id="inventory-list" class="space-y-1.5 overflow-y-auto flex-1 pr-1 min-h-[100px] max-h-[180px]">
-                        <!-- Items rendered via JS -->
-                    </div>
-                </div>
-            </section>
-
-            <!-- CENTER/RIGHT COLUMN: Tactical Map & Control Console (8 cols) -->
-            <section class="lg:col-span-8 flex flex-col gap-3 min-h-0">
-                
-                <!-- Tactical Map & Combat Area -->
-                <div id="tactical-container" class="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 space-y-3 flex-1 flex flex-col min-h-0 relative">
-                    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-                        <span class="text-xs font-bold text-slate-400 tracking-wider"><i class="fa-solid fa-map-location-dot text-cyan-400 mr-1.5"></i>タクティカルマップ (3x3 GRID)</span>
-                        <span id="ring-status" class="text-[11px] font-mono text-amber-400"><i class="fa-solid fa-circle-radiation mr-1"></i>安全地帯収縮まで: 4ターン</span>
-                    </div>
-
-                    <!-- Grid Map (3x3 Interactive) -->
-                    <div class="grid grid-cols-3 gap-2 flex-1 min-h-[200px]">
-                        <!-- 9 Grid cells dynamically updated -->
-                        <div id="cell-0" onclick="clickCell(0)" class="bg-slate-950 border border-slate-800 rounded-xl p-2 flex flex-col justify-between cursor-pointer hover:border-cyan-500/50 transition relative overflow-hidden group min-h-[65px]"></div>
-                        <div id="cell-1" onclick="clickCell(1)" class="bg-slate-950 border border-slate-800 rounded-xl p-2 flex flex-col justify-between cursor-pointer hover:border-cyan-500/50 transition relative overflow-hidden group min-h-[65px]"></div>
-                        <div id="cell-2" onclick="clickCell(2)" class="bg-slate-950 border border-slate-800 rounded-xl p-2 flex flex-col justify-between cursor-pointer hover:border-cyan-500/50 transition relative overflow-hidden group min-h-[65px]"></div>
-                        <div id="cell-3" onclick="clickCell(3)" class="bg-slate-950 border border-slate-800 rounded-xl p-2 flex flex-col justify-between cursor-pointer hover:border-cyan-500/50 transition relative overflow-hidden group min-h-[65px]"></div>
-                        <div id="cell-4" onclick="clickCell(4)" class="bg-slate-950 border border-slate-800 rounded-xl p-2 flex flex-col justify-between cursor-pointer hover:border-cyan-500/50 transition relative overflow-hidden group min-h-[65px]"></div>
-                        <div id="cell-5" onclick="clickCell(5)" class="bg-slate-950 border border-slate-800 rounded-xl p-2 flex flex-col justify-between cursor-pointer hover:border-cyan-500/50 transition relative overflow-hidden group min-h-[65px]"></div>
-                        <div id="cell-6" onclick="clickCell(6)" class="bg-slate-950 border border-slate-800 rounded-xl p-2 flex flex-col justify-between cursor-pointer hover:border-cyan-500/50 transition relative overflow-hidden group min-h-[65px]"></div>
-                        <div id="cell-7" onclick="clickCell(7)" class="bg-slate-950 border border-slate-800 rounded-xl p-2 flex flex-col justify-between cursor-pointer hover:border-cyan-500/50 transition relative overflow-hidden group min-h-[65px]"></div>
-                        <div id="cell-8" onclick="clickCell(8)" class="bg-slate-950 border border-slate-800 rounded-xl p-2 flex flex-col justify-between cursor-pointer hover:border-cyan-500/50 transition relative overflow-hidden group min-h-[65px]"></div>
-                    </div>
-
-                    <!-- Action Controls Panel -->
-                    <div id="normal-controls" class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-                        <button id="btn-action-search" class="py-2.5 px-2 bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold rounded-lg border border-slate-700 text-xs flex items-center justify-center gap-1.5 transition">
-                            <i class="fa-solid fa-magnifying-glass text-cyan-400"></i> 物資探索
-                        </button>
-                        <button id="btn-action-rest" class="py-2.5 px-2 bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold rounded-lg border border-slate-700 text-xs flex items-center justify-center gap-1.5 transition">
-                            <i class="fa-solid fa-kit-medical text-emerald-400"></i> 休息・回復
-                        </button>
-                        <button id="btn-action-scan" class="py-2.5 px-2 bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold rounded-lg border border-slate-700 text-xs flex items-center justify-center gap-1.5 transition">
-                            <i class="fa-solid fa-radar text-amber-400"></i> 周囲索敵
-                        </button>
-                        <button id="btn-action-move" class="py-2.5 px-2 bg-cyan-900/50 hover:bg-cyan-800/60 text-cyan-200 font-bold rounded-lg border border-cyan-700/50 text-xs flex items-center justify-center gap-1.5 transition">
-                            <i class="fa-solid fa-person-walking text-cyan-400"></i> エリア移動
-                        </button>
-                    </div>
-
-                    <!-- Combat Controls Panel (Hidden by default) -->
-                    <div id="combat-controls" class="hidden grid-cols-2 sm:grid-cols-4 gap-2 pt-1 border-t border-red-900/50">
-                        <button id="btn-combat-attack" class="py-2.5 px-2 bg-red-900/70 hover:bg-red-800 text-red-100 font-extrabold rounded-lg border border-red-700 text-xs flex items-center justify-center gap-1.5 transition animate-pulse">
-                            <i class="fa-solid fa-gun text-red-400"></i> 攻撃 (ATTACK)
-                        </button>
-                        <button id="btn-combat-defend" class="py-2.5 px-2 bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold rounded-lg border border-slate-700 text-xs flex items-center justify-center gap-1.5 transition">
-                            <i class="fa-solid fa-shield text-blue-400"></i> 防御・身隠し
-                        </button>
-                        <button id="btn-combat-item" class="py-2.5 px-2 bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold rounded-lg border border-slate-700 text-xs flex items-center justify-center gap-1.5 transition">
-                            <i class="fa-solid fa-hand-holding-medical text-emerald-400"></i> 回復使用
-                        </button>
-                        <button id="btn-combat-flee" class="py-2.5 px-2 bg-amber-950/60 hover:bg-amber-900 text-amber-200 font-bold rounded-lg border border-amber-800 text-xs flex items-center justify-center gap-1.5 transition">
-                            <i class="fa-solid fa-person-running text-amber-400"></i> 撤退・逃走
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Log Terminal & Kill Feed -->
-                <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 grid grid-cols-1 md:grid-cols-3 gap-3 min-h-[160px]">
-                    <!-- Main Battle Log (2 cols) -->
-                    <div class="md:col-span-2 flex flex-col min-h-0 h-40 md:h-auto">
-                        <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1">
-                            <i class="fa-solid fa-terminal text-cyan-400"></i> BATTLE LOG / ターミナルログ
-                        </div>
-                        <div id="log-terminal" class="flex-1 bg-slate-950 rounded-lg p-2.5 border border-slate-800/80 font-mono text-xs overflow-y-auto space-y-1">
-                            <!-- JS Inject -->
-                        </div>
-                    </div>
-                    <!-- Kill Feed (1 col) -->
-                    <div class="flex flex-col min-h-0 h-32 md:h-auto">
-                        <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1">
-                            <i class="fa-solid fa-skull-crossbones text-red-400"></i> KILL FEED / 戦況全域ログ
-                        </div>
-                        <div id="kill-feed" class="flex-1 bg-slate-950 rounded-lg p-2 border border-slate-800/80 font-mono text-[11px] overflow-y-auto space-y-1">
-                            <!-- JS Inject -->
-                        </div>
-                    </div>
-                </div>
-
-            </section>
-        </main>
-    </div>
-
-    <!-- AREA MOVE MODAL OVERLAY -->
-    <div id="move-modal" class="fixed inset-0 z-40 bg-slate-950/80 hidden items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-700 rounded-xl p-5 max-w-sm w-full space-y-4">
-            <h3 class="text-sm font-bold text-cyan-400 flex items-center justify-between">
-                <span><i class="fa-solid fa-map-location-dot mr-2"></i>移動先エリアを選択</span>
-                <button id="btn-close-move" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
-            </h3>
-            <div id="move-list" class="space-y-2 max-h-60 overflow-y-auto">
-                <!-- Move options -->
-            </div>
-        </div>
-    </div>
-
-    <!-- END GAME MODAL OVERLAY -->
-    <div id="end-screen" class="fixed inset-0 z-50 bg-slate-950/95 hidden items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl text-center space-y-6 pulse-border">
-            <div id="end-icon" class="text-6xl text-amber-400 glow-yellow">
-                <i class="fa-solid fa-trophy"></i>
-            </div>
-            <div class="space-y-1">
-                <h2 id="end-title" class="text-2xl font-extrabold tracking-wider text-amber-400 glow-cyan">VICTORY ROYALE!</h2>
-                <p id="end-subtitle" class="text-xs text-slate-400">最後の1人として生存しました。</p>
-            </div>
-
-            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 grid grid-cols-2 gap-3 text-xs">
-                <div>
-                    <div class="text-slate-500">最終順位</div>
-                    <div id="end-rank" class="text-amber-400 font-bold text-lg">#1 / 50</div>
-                </div>
-                <div>
-                    <div class="text-slate-500">撃破数 (Kills)</div>
-                    <div id="end-kills" class="text-red-400 font-bold text-lg">0</div>
-                </div>
-                <div>
-                    <div class="text-slate-500">生存ターン</div>
-                    <div id="end-turns" class="text-cyan-400 font-bold text-base">12</div>
-                </div>
-                <div>
-                    <div class="text-slate-500">使用パーク</div>
-                    <div id="end-perk" class="text-slate-200 font-bold text-base">Assault</div>
-                </div>
-            </div>
-
-            <button id="btn-return-lobby" class="w-full py-3.5 bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700 text-slate-100 font-bold rounded-xl shadow-lg border border-slate-600 transition transform hover:scale-[1.02] flex items-center justify-center gap-2">
-                <i class="fa-solid fa-house"></i> ロビー（スタート画面）へ戻る
-            </button>
-        </div>
-    </div>
-
-    <!-- GAME LOGIC SCRIPT -->
-    <script>
-        // --- CYBER BGM AUDIO ENGINE (Web Audio API - Ultra Cyberpunk Synthwave Engine) ---
-        class CyberAudioEngine {
-            constructor() {
-                this.ctx = null;
-                this.isPlaying = false;
-                this.tempo = 128;
-                this.step = 0;
-                this.timer = null;
-                // サイバーパンク・フューチャーダークスケール (F Minor / Db Major 緊迫感強化)
-                this.bassNotes = [43.65, 43.65, 51.91, 43.65, 65.41, 58.27, 51.91, 48.99]; // F1, Ab1, F1, C2, Bb1, Ab1, G1
-                this.leadNotes = [174.61, 207.65, 261.63, 311.13, 349.23, 311.13, 261.63, 207.65]; // F3, Ab3, C4, Eb4, F4
-                this.arpeggioNotes = [349.23, 415.30, 523.25, 622.25, 698.46, 830.61, 698.46, 523.25]; // F4, Ab4, C5, Eb5, F5, Ab5
-                this.subNotes = [21.83, 21.83, 25.96, 24.50]; // F0 Sub Bass (腹に響く最低域)
-            }
-
-            init() {
-                if (!this.ctx) {
-                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-                    this.ctx = new AudioCtx();
-                }
-                if (this.ctx.state === 'suspended') {
-                    this.ctx.resume();
-                }
-            }
-
-            toggle() {
-                this.init();
-                if (this.isPlaying) {
-                    this.stop();
-                } else {
-                    this.start();
-                }
-                return this.isPlaying;
-            }
-
-            start() {
-                if (this.isPlaying) return;
-                this.isPlaying = true;
-                this.step = 0;
-                const interval = (60 / this.tempo / 4) * 1000;
-                this.timer = setInterval(() => this.playStep(), interval);
-            }
-
-            stop() {
-                this.isPlaying = false;
-                if (this.timer) {
-                    clearInterval(this.timer);
-                    this.timer = null;
-                }
-            }
-
-            playStep() {
-                if (!this.ctx || !this.isPlaying) return;
-
-                const t = this.ctx.currentTime;
-                const stepInBar = this.step % 16;
-                const bar = Math.floor(this.step / 16);
-
-                // 1. 重低音ディストーション・サイバーキック (Cyber Heavy Kick)
-                if (stepInBar === 0 || stepInBar === 4 || stepInBar === 8 || stepInBar === 12 || (stepInBar === 15 && Math.random() < 0.4)) {
-                    const osc = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(220, t);
-                    osc.frequency.exponentialRampToValueAtTime(28, t + 0.16);
-
-                    gain.gain.setValueAtTime(0.65, t);
-                    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-
-                    osc.connect(gain);
-                    gain.connect(this.ctx.destination);
-
-                    osc.start(t);
-                    osc.stop(t + 0.19);
-                }
-
-                // 2. メタルノイズ・インダストリアルスネア (Heavy Metal Snare + Noise)
-                if (stepInBar === 4 || stepInBar === 12) {
-                    const bufferSize = this.ctx.sampleRate * 0.15;
-                    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-                    const data = buffer.getChannelData(0);
-                    for (let i = 0; i < bufferSize; i++) {
-                        data[i] = Math.random() * 2 - 1;
-                    }
-
-                    const noise = this.ctx.createBufferSource();
-                    noise.buffer = buffer;
-
-                    const noiseFilter = this.ctx.createBiquadFilter();
-                    noiseFilter.type = 'bandpass';
-                    noiseFilter.frequency.value = 1800;
-                    noiseFilter.Q.value = 1.2;
-
-                    const noiseGain = this.ctx.createGain();
-                    noiseGain.gain.setValueAtTime(0.35, t);
-                    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
-
-                    noise.connect(noiseFilter);
-                    noiseFilter.connect(noiseGain);
-                    noiseGain.connect(this.ctx.destination);
-
-                    noise.start(t);
-                }
-
-                // 3. 高速16分音符 サイバーハイハット (Cyber Metallic Hat)
-                if (stepInBar % 2 === 1 || stepInBar % 4 === 2) {
-                    const bufferSize = this.ctx.sampleRate * 0.04;
-                    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-                    const data = buffer.getChannelData(0);
-                    for (let i = 0; i < bufferSize; i++) {
-                        data[i] = Math.random() * 2 - 1;
-                    }
-
-                    const noise = this.ctx.createBufferSource();
-                    noise.buffer = buffer;
-
-                    const noiseFilter = this.ctx.createBiquadFilter();
-                    noiseFilter.type = 'highpass';
-                    noiseFilter.frequency.value = 9000;
-
-                    const noiseGain = this.ctx.createGain();
-                    const isOpen = (stepInBar === 6 || stepInBar === 14);
-                    const vol = isOpen ? 0.09 : 0.05;
-                    const dur = isOpen ? 0.07 : 0.025;
-
-                    noiseGain.gain.setValueAtTime(vol, t);
-                    noiseGain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-
-                    noise.connect(noiseFilter);
-                    noiseFilter.connect(noiseGain);
-                    noiseGain.connect(this.ctx.destination);
-
-                    noise.start(t);
-                }
-
-                // 4. 超低音サブドローン (Sub-Zero Bass)
-                if (stepInBar % 4 === 0) {
-                    const subFreq = this.subNotes[Math.floor(this.step / 8) % this.subNotes.length];
-                    const subOsc = this.ctx.createOscillator();
-                    const subGain = this.ctx.createGain();
-                    
-                    subOsc.type = 'sawtooth';
-                    subOsc.frequency.setValueAtTime(subFreq, t);
-
-                    const subFilter = this.ctx.createBiquadFilter();
-                    subFilter.type = 'lowpass';
-                    subFilter.frequency.value = 180;
-
-                    subGain.gain.setValueAtTime(0.3, t);
-                    subGain.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
-
-                    subOsc.connect(subFilter);
-                    subFilter.connect(subGain);
-                    subGain.connect(this.ctx.destination);
-
-                    subOsc.start(t);
-                    subOsc.stop(t + 0.42);
-                }
-
-                // 5. 凶暴なウルトラ・ソーウェーブベース (Aggressive Sawtooth Cyber Bass)
-                if (stepInBar % 2 === 0) {
-                    const bassFreq = this.bassNotes[Math.floor(this.step / 2) % this.bassNotes.length];
-                    const osc1 = this.ctx.createOscillator();
-                    const osc2 = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-                    const filter = this.ctx.createBiquadFilter();
-
-                    osc1.type = 'sawtooth';
-                    osc1.frequency.setValueAtTime(bassFreq, t);
-
-                    // 厚みを生むデチューン (ピッチズレ)
-                    osc2.type = 'sawtooth';
-                    osc2.frequency.setValueAtTime(bassFreq * 1.012, t);
-
-                    filter.type = 'lowpass';
-                    const filterMod = 400 + (Math.sin(this.step / 4) + 1) * 800;
-                    filter.frequency.setValueAtTime(filterMod, t);
-                    filter.frequency.exponentialRampToValueAtTime(150, t + 0.16);
-                    filter.Q.value = 6.0;
-
-                    gain.gain.setValueAtTime(0.18, t);
-                    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-
-                    osc1.connect(filter);
-                    osc2.connect(filter);
-                    filter.connect(gain);
-                    gain.connect(this.ctx.destination);
-
-                    osc1.start(t);
-                    osc2.start(t);
-                    osc1.stop(t + 0.19);
-                    osc2.stop(t + 0.19);
-                }
-
-                // 6. アルペジオ・ネオンリフレイン (High-Speed Cyber Arpeggio)
-                const arpFreq = this.arpeggioNotes[this.step % this.arpeggioNotes.length];
-                const arpOsc = this.ctx.createOscillator();
-                const arpGain = this.ctx.createGain();
-                const arpFilter = this.ctx.createBiquadFilter();
-
-                arpOsc.type = 'square';
-                arpOsc.frequency.setValueAtTime(arpFreq, t);
-
-                arpFilter.type = 'bandpass';
-                arpFilter.frequency.setValueAtTime(2200, t);
-                arpFilter.Q.value = 3.5;
-
-                arpGain.gain.setValueAtTime(0.04, t);
-                arpGain.gain.exponentialRampToValueAtTime(0.0005, t + 0.1);
-
-                arpOsc.connect(arpFilter);
-                arpFilter.connect(arpGain);
-                arpGain.connect(this.ctx.destination);
-
-                arpOsc.start(t);
-                arpOsc.stop(t + 0.11);
-
-                this.step++;
-            }
-        }
-
-        const bgmEngine = new CyberAudioEngine();
-
-        function toggleBGM() {
-            const active = bgmEngine.toggle();
-            const btn = document.getElementById('btn-toggle-bgm');
-            const icon = document.getElementById('bgm-icon');
-            const text = document.getElementById('bgm-status-text');
-
-            if (active) {
-                icon.className = 'fa-solid fa-volume-high text-cyan-400 animate-pulse';
-                text.innerText = 'BGM: ON';
-                btn.classList.add('border-cyan-400', 'bg-cyan-950/40');
-            } else {
-                icon.className = 'fa-solid fa-volume-xmark';
-                text.innerText = 'BGM: OFF';
-                btn.classList.remove('border-cyan-400', 'bg-cyan-950/40');
-            }
-        }
-
-        // --- DATA & CONSTANTS ---
-        const ZONES = [
-            { id: 0, name: "中央スクエア", type: "City", danger: 1 },
-            { id: 1, name: "軍事基地", type: "Military", danger: 3 },
-            { id: 2, name: "密林エリア", type: "Forest", danger: 2 },
-            { id: 3, name: "廃墟ビル街", type: "Ruins", danger: 2 },
-            { id: 4, name: "研究シェルター", type: "Shelter", danger: 1 },
-            { id: 5, name: "臨海工業地帯", type: "Factory", danger: 2 },
-            { id: 6, name: "物流港湾", type: "Port", danger: 2 },
-            { id: 7, name: "山岳観測所", type: "Mountain", danger: 1 },
-            { id: 8, name: "地下プラント", type: "Subway", danger: 3 }
-        ];
-
-        const ITEM_DATABASE = [
-            // Weapons
-            { id: 'w1', name: 'サバイバルナイフ', type: 'weapon', atk: 8, rarity: 'Common', icon: 'fa-hand-back-fist' },
-            { id: 'w2', name: '9mm ハンドガン', type: 'weapon', atk: 18, rarity: 'Common', icon: 'fa-gun' },
-            { id: 'w3', name: 'ショットガン', type: 'weapon', atk: 35, rarity: 'Rare', icon: 'fa-gun' },
-            { id: 'w4', name: 'アサルトライフル', type: 'weapon', atk: 45, rarity: 'Rare', icon: 'fa-gun' },
-            { id: 'w5', name: 'スナイパーライフル', type: 'weapon', atk: 70, rarity: 'Epic', icon: 'fa-crosshairs' },
-            
-            // Armors
-            { id: 'a1', name: '防弾チョッキ Lv1', type: 'armor', def: 15, rarity: 'Common', icon: 'fa-vest' },
-            { id: 'a2', name: 'タクティカルベスト Lv2', type: 'armor', def: 30, rarity: 'Rare', icon: 'fa-vest' },
-            { id: 'a3', name: '特殊部隊アーマー Lv3', type: 'armor', def: 45, rarity: 'Epic', icon: 'fa-shield-halved' },
-            
-            // Meds
-            { id: 'm1', name: '応急包帯', type: 'med', heal: 25, rarity: 'Common', icon: 'fa-bandage' },
-            { id: 'm2', name: '医療キット', type: 'med', heal: 55, rarity: 'Rare', icon: 'fa-kit-medical' },
-            { id: 'm3', name: 'エナジードリンク', type: 'med', heal: 35, rarity: 'Common', icon: 'fa-bottle-water' }
-        ];
-
-        const PERKS = {
-            assault: { name: 'アサルト', atkMod: 1.15, defMod: 1.0, hpMax: 100, initItem: 'w2' },
-            scout: { name: 'スカウト', atkMod: 1.0, defMod: 1.0, hpMax: 100, dodgeBonus: 0.1, initItem: 'm1' },
-            medic: { name: 'メディック', atkMod: 1.0, defMod: 1.0, hpMax: 100, healMod: 1.3, initItem: 'm2' },
-            tank: { name: 'タフネス', atkMod: 1.0, defMod: 1.1, hpMax: 125, initItem: 'a1' }
-        };
-
-        const AI_NAMES = [
-            "Shadow", "Viper", "Ghost", "Alpha", "Omega", "Reaper", "Blaze", "Raven", "Hunter", "Titan",
-            "Spectre", "Cobra", "Phoenix", "Maverick", "Falcon", "Zero", "Nexus", "Storm", "Wolf", "Kestrel",
-            "サイバー侍", "電脳浪人", "黒狐", "赤鬼", "疾風", "雷電", "影狼", "紫電", "迷彩兵", "鋼鉄男",
-            "CyberPunk99", "AIBot_01", "NeonSniper", "VaporBlade", "GridWalker", "Aegis_X"
-        ];
-
-        // --- GAME STATE ---
-        let gameState = {
-            turn: 1,
-            maxPlayers: 50,
-            botDifficulty: 'normal',
-            player: null,
-            competitors: [],
-            safeZoneIds: [0, 1, 2, 3, 4, 5, 6, 7, 8],
-            ringTimer: 4,
-            inCombatWith: null,
-            isGuarding: false,
-            isGameOver: false
-        };
-
-        // --- GAME INITIALIZATION ---
-        function initGame() {
-            // BGMがオフならゲームスタート時に自動起動を試みる
-            if (!bgmEngine.isPlaying) {
-                toggleBGM();
-            }
-
-            const nameInput = document.getElementById('player-name-input').value.trim() || "Operator";
-            const perkKey = document.getElementById('player-perk-input').value;
-            const diffKey = document.getElementById('game-difficulty-input').value;
-
-            let totalCount = 50;
-            if (diffKey === 'easy') totalCount = 10;
-            if (diffKey === 'hard') totalCount = 99;
-
-            gameState.maxPlayers = totalCount;
-            gameState.botDifficulty = diffKey;
-            const perkData = PERKS[perkKey];
-
-            // Player Setup
-            gameState.player = {
-                name: nameInput,
-                perk: perkKey,
-                hp: perkData.hpMax,
-                maxHp: perkData.hpMax,
-                weapon: null,
-                armor: null,
-                inventory: [],
-                zoneId: Math.floor(Math.random() * 9),
-                kills: 0,
-                isAlive: true
-            };
-
-            // Equip initial item
-            if (perkData.initItem) {
-                const initItemData = ITEM_DATABASE.find(i => i.id === perkData.initItem);
-                if (initItemData) {
-                    if (initItemData.type === 'weapon') gameState.player.weapon = initItemData;
-                    if (initItemData.type === 'armor') gameState.player.armor = initItemData;
-                    if (initItemData.type === 'med') gameState.player.inventory.push(initItemData);
-                }
-            }
-
-            // Create BOT Competitors
-            gameState.competitors = [];
-            for (let i = 1; i < totalCount; i++) {
-                const nameBase = AI_NAMES[Math.floor(Math.random() * AI_NAMES.length)];
-                const randomWeapon = Math.random() < 0.5 ? ITEM_DATABASE[Math.floor(Math.random() * 4)] : null;
-                const randomArmor = Math.random() < 0.4 ? ITEM_DATABASE[5] : null;
-
-                const botMeds = [];
-                if (Math.random() < 0.6) botMeds.push(ITEM_DATABASE[7]);
-
-                gameState.competitors.push({
-                    id: i,
-                    name: `${nameBase}_${i}`,
-                    hp: 100,
-                    maxHp: 100,
-                    weapon: randomWeapon,
-                    armor: randomArmor,
-                    inventory: botMeds,
-                    zoneId: Math.floor(Math.random() * 9),
-                    kills: 0,
-                    aggro: Math.random(),
-                    isAlive: true
-                });
-            }
-
-            gameState.turn = 1;
-            gameState.safeZoneIds = [0, 1, 2, 3, 4, 5, 6, 7, 8];
-            gameState.ringTimer = 4;
-            gameState.inCombatWith = null;
-            gameState.isGuarding = false;
-            gameState.isGameOver = false;
-
-            // Clear UI elements
-            document.getElementById('log-terminal').innerHTML = '';
-            document.getElementById('kill-feed').innerHTML = '';
-
-            document.getElementById('start-screen').classList.add('hidden');
-            document.getElementById('end-screen').classList.add('hidden');
-
-            addLog(`[作戦開始] プレイヤー「${nameInput}」降下完了。参加者数: 全${totalCount}名`, 'cyan');
-            addLog(`初期降下位置: ${ZONES[gameState.player.zoneId].name}`, 'slate');
-
-            updateUI();
-        }
-
-        // --- HELPER LOG & FEED FUNCTIONS ---
-        function addLog(msg, color = 'slate') {
-            const terminal = document.getElementById('log-terminal');
-            const entry = document.createElement('div');
-            let colorClass = 'text-slate-300';
-            if (color === 'cyan') colorClass = 'text-cyan-400 font-semibold';
-            if (color === 'red') colorClass = 'text-red-400 font-semibold';
-            if (color === 'amber') colorClass = 'text-amber-400';
-            if (color === 'emerald') colorClass = 'text-emerald-400';
-
-            entry.className = colorClass;
-            entry.innerHTML = `<span class="text-slate-600 mr-1">[T${gameState.turn}]</span> ${msg}`;
-            terminal.appendChild(entry);
-            terminal.scrollTop = terminal.scrollHeight;
-        }
-
-        function addKillFeed(msg) {
-            const feed = document.getElementById('kill-feed');
-            const entry = document.createElement('div');
-            entry.className = 'text-slate-400 truncate border-b border-slate-900 pb-0.5';
-            entry.innerHTML = `<span class="text-red-400"><i class="fa-solid fa-skull mr-1"></i></span>${msg}`;
-            feed.insertBefore(entry, feed.firstChild);
-        }
-
-        // --- MAP CLICK HANDLER ---
-        function clickCell(zoneId) {
-            if (gameState.isGameOver) return;
-            if (gameState.inCombatWith) {
-                addLog('戦闘中は移動できません！攻撃・防御または逃走を選択してください。', 'red');
-                return;
-            }
-            if (gameState.player.zoneId === zoneId) {
-                addLog(`現在地 [${ZONES[zoneId].name}] に滞在中です。`, 'slate');
-                return;
-            }
-            moveToZone(zoneId);
-        }
-
-        function moveToZone(targetZoneId) {
-            gameState.player.zoneId = targetZoneId;
-            addLog(`エリア移動: [${ZONES[targetZoneId].name}] へ移動しました。`, 'cyan');
-            endTurn();
-        }
-
-        function openMoveModal() {
-            if (gameState.inCombatWith) {
-                addLog('戦闘中はエリア移動できません。', 'red');
-                return;
-            }
-            const list = document.getElementById('move-list');
-            list.innerHTML = '';
-            ZONES.forEach(z => {
-                const isCurrent = gameState.player.zoneId === z.id;
-                const isSafe = gameState.safeZoneIds.includes(z.id);
-                const btn = document.createElement('button');
-                btn.className = `w-full text-left p-2.5 rounded-lg border text-xs flex justify-between items-center ${
-                    isCurrent ? 'bg-slate-800 border-cyan-500/50 text-cyan-400' : 'bg-slate-950 hover:bg-slate-800 border-slate-800 text-slate-200'
-                }`;
-                btn.onclick = () => {
-                    document.getElementById('move-modal').classList.add('hidden');
-                    moveToZone(z.id);
-                };
-                btn.innerHTML = `
-                    <span>${z.name} ${isCurrent ? '(現在地)' : ''}</span>
-                    <span class="${isSafe ? 'text-emerald-400' : 'text-red-400'} font-bold">${isSafe ? '安全' : '汚染区域'}</span>
-                `;
-                list.appendChild(btn);
-            });
-            document.getElementById('move-modal').classList.remove('hidden');
-        }
-
-        // --- PLAYER ACTIONS ---
-        function actionSearch() {
-            if (gameState.inCombatWith) return;
-            addLog(`[${ZONES[gameState.player.zoneId].name}] を探索中...`, 'slate');
-            
-            const rand = Math.random();
-            if (rand < 0.6) {
-                // Item found
-                const item = ITEM_DATABASE[Math.floor(Math.random() * ITEM_DATABASE.length)];
-                if (gameState.player.inventory.length < 6) {
-                    gameState.player.inventory.push(item);
-                    addLog(`物資を発見: [${item.name}] を獲得しました！`, 'emerald');
-                } else {
-                    addLog(`[${item.name}] を発見しましたが、インベントリが一杯です。`, 'amber');
-                }
-            } else {
-                addLog('有用な物資は見つかりませんでした。', 'slate');
-            }
-            endTurn();
-        }
-
-        function actionRest() {
-            if (gameState.inCombatWith) return;
-            const healAmt = 20;
-            gameState.player.hp = Math.min(gameState.player.maxHp, gameState.player.hp + healAmt);
-            addLog(`物陰で待機して体力を回復 (+${healAmt} HP)。現在HP: ${gameState.player.hp}`, 'emerald');
-            endTurn();
-        }
-
-        function actionScan() {
-            if (gameState.inCombatWith) return;
-            const inArea = gameState.competitors.filter(c => c.isAlive && c.zoneId === gameState.player.zoneId);
-            addLog(`レーダースキャン完了: 現在地に敵プレイヤーが ${inArea.length} 名検知されました。`, 'amber');
-            endTurn(false); // Scan cost half turn or info only
-        }
-
-        // --- COMBAT ACTIONS ---
-        function triggerFx(type, text = '', isCrit = false) {
-            const container = document.getElementById('tactical-container');
-            
-            // 画面揺れ
-            container.classList.remove('shake-effect');
-            void container.offsetWidth; // リフロー発生でアニメーション再起動
-            container.classList.add('shake-effect');
-
-            // 攻撃時のスラッシュ（斬撃/銃撃）視覚エフェクトを追加
-            if (type === 'enemy-damage' || type === 'player-damage') {
-                const slash = document.createElement('div');
-                slash.className = isCrit ? 'slash-effect-crit' : 'slash-effect';
-                container.appendChild(slash);
-                setTimeout(() => slash.remove(), 400);
-            }
-
-            // 赤フラッシュ / 会心フラッシュ
-            const flash = document.createElement('div');
-            flash.className = isCrit ? 'crit-flash' : 'hit-flash';
-            document.body.appendChild(flash);
-            setTimeout(() => flash.remove(), 400);
-
-            // ダメージ・効果テキストポップアップ
-            if (text) {
-                const pop = document.createElement('div');
-                pop.className = `damage-pop-el text-2xl sm:text-3xl ${
-                    isCrit ? 'text-amber-400 glow-yellow scale-125' : 
-                    type === 'player-damage' ? 'text-red-500 glow-red' : 
-                    type === 'enemy-damage' ? 'text-cyan-400 glow-cyan' : 'text-emerald-400'
-                }`;
-                pop.innerHTML = text;
-                container.appendChild(pop);
-                setTimeout(() => pop.remove(), 850);
-            }
-        }
-
-        function startCombat(enemy) {
-            gameState.inCombatWith = enemy;
-            triggerFx('start', '⚡ ENCOUNTER! ⚡');
-            addLog(`⚠️ 敵プレイヤー [${enemy.name}] と遭遇！戦闘開始！`, 'red');
-            updateUI();
-        }
-
-        function combatAttack() {
-            if (!gameState.inCombatWith) return;
-            const enemy = gameState.inCombatWith;
-            
-            // Player Attack Calc
-            const baseAtk = 10 + (gameState.player.weapon ? gameState.player.weapon.atk : 0);
-            const perk = PERKS[gameState.player.perk];
-            const isCrit = Math.random() < 0.25; // 25%の確率でクリティカルヒット
-            const critMod = isCrit ? 1.6 : 1.0;
-            const finalAtk = Math.floor(baseAtk * perk.atkMod * (0.9 + Math.random() * 0.2) * critMod);
-            
-            // Enemy Armor Calc
-            const armorDef = enemy.armor ? enemy.armor.def : 0;
-            const damage = Math.max(5, Math.floor(finalAtk * (1 - armorDef / 100)));
-
-            enemy.hp -= damage;
-            const enemyHpAfter = Math.max(0, enemy.hp);
-            
-            // 演出実行
-            triggerFx('enemy-damage', `${isCrit ? '💥 CRITICAL! ' : ''}-${damage}`, isCrit);
-
-            if (isCrit) {
-                addLog(`⚡ クリティカル！！ ${enemy.name} に ${damage} ダメージ！ (敵HP: ${enemyHpAfter}/${enemy.maxHp} | 自分HP: ${gameState.player.hp}/${gameState.player.maxHp})`, 'amber');
-            } else {
-                addLog(`⚔️ ${enemy.name} に攻撃！ ${damage} ダメージ！ (敵HP: ${enemyHpAfter}/${enemy.maxHp} | 自分HP: ${gameState.player.hp}/${gameState.player.maxHp})`, 'cyan');
-            }
-
-            if (enemy.hp <= 0) {
-                enemy.isAlive = false;
-                gameState.player.kills++;
-                triggerFx('heal', '☠️ K.O.!', true);
-                addLog(`💥 [${enemy.name}] を撃破しました！ (自分HP: ${gameState.player.hp}/${gameState.player.maxHp})`, 'emerald');
-                addKillFeed(`${gameState.player.name} が ${enemy.name} を倒した`);
-                
-                // Loot Item
-                if (enemy.weapon || enemy.armor) {
-                    const loot = enemy.weapon || enemy.armor;
-                    addLog(`戦利品: [${loot.name}] を入手しました。`, 'amber');
-                    if (loot.type === 'weapon' && (!gameState.player.weapon || loot.atk > gameState.player.weapon.atk)) {
-                        gameState.player.weapon = loot;
-                    } else if (loot.type === 'armor' && (!gameState.player.armor || loot.def > gameState.player.armor.def)) {
-                        gameState.player.armor = loot;
-                    }
-                }
-                gameState.inCombatWith = null;
-                endTurn();
-                return;
-            }
-
-            // Enemy Counter-attack
-            enemyCounter();
-        }
-
-        function combatDefend() {
-            if (!gameState.inCombatWith) return;
-            gameState.isGuarding = true;
-            triggerFx('guard', '🛡️ BLOCK');
-            addLog(`🛡️ 防御姿勢をとりました。受けるダメージが半減します。 (自分HP: ${gameState.player.hp}/${gameState.player.maxHp})`, 'slate');
-            enemyCounter();
-            gameState.isGuarding = false;
-        }
-
-        function combatUseItem() {
-            if (!gameState.inCombatWith) return;
-            const medIndex = gameState.player.inventory.findIndex(i => i.type === 'med');
-            if (medIndex !== -1) {
-                const med = gameState.player.inventory.splice(medIndex, 1)[0];
-                gameState.player.hp = Math.min(gameState.player.maxHp, gameState.player.hp + med.heal);
-                triggerFx('heal', `+${med.heal} HP`);
-                addLog(`💊 [${med.name}] を使用！ HP+${med.heal} 回復 (自分HP: ${gameState.player.hp}/${gameState.player.maxHp})`, 'emerald');
-                enemyCounter();
-            } else {
-                addLog(`回復アイテムを所持していません！`, 'red');
-            }
-        }
-
-        function combatFlee() {
-            if (!gameState.inCombatWith) return;
-            if (Math.random() < 0.6) {
-                triggerFx('flee', '💨 ESCAPED!');
-                addLog(`💨 戦闘からの離脱に成功しました！ (自分HP: ${gameState.player.hp}/${gameState.player.maxHp})`, 'amber');
-                gameState.inCombatWith = null;
-                endTurn();
-            } else {
-                addLog(`❌ 逃走失敗！敵に背後を見せてしまった。 (自分HP: ${gameState.player.hp}/${gameState.player.maxHp})`, 'red');
-                enemyCounter();
-            }
-        }
-
-        function enemyCounter() {
-            const enemy = gameState.inCombatWith;
-            if (!enemy || !enemy.isAlive) return;
-
-            const enemyAtk = 10 + (enemy.weapon ? enemy.weapon.atk : 0);
-            const playerDef = (gameState.player.armor ? gameState.player.armor.def : 0) * (PERKS[gameState.player.perk].defMod || 1);
-            
-            let damage = Math.max(3, Math.floor(enemyAtk * (1 - playerDef / 100)));
-            if (gameState.isGuarding) damage = Math.floor(damage * 0.5);
-
-            gameState.player.hp = Math.max(0, gameState.player.hp - damage);
-            const enemyHpCurrent = Math.max(0, enemy.hp);
-            
-            // 被ダメージ演出
-            setTimeout(() => {
-                triggerFx('player-damage', `-${damage}`);
-                addLog(`💥 [${enemy.name}] の反撃！ ${damage} ダメージ！ (自分HP: ${gameState.player.hp}/${gameState.player.maxHp} | 敵HP: ${enemyHpCurrent}/${enemy.maxHp})`, 'red');
-
-                if (gameState.player.hp <= 0) {
-                    gameOver(false);
-                }
-                updateUI();
-            }, 250);
-        }
-
-        function combatAttack() {
-            if (!gameState.inCombatWith) return;
-            const enemy = gameState.inCombatWith;
-            
-            // Player Attack Calc
-            const baseAtk = 10 + (gameState.player.weapon ? gameState.player.weapon.atk : 0);
-            const perk = PERKS[gameState.player.perk];
-            const finalAtk = Math.floor(baseAtk * perk.atkMod * (0.9 + Math.random() * 0.2));
-            
-            // Enemy Armor Calc
-            const armorDef = enemy.armor ? enemy.armor.def : 0;
-            const damage = Math.max(5, Math.floor(finalAtk * (1 - armorDef / 100)));
-
-            enemy.hp -= damage;
-            addLog(`⚔️ ${enemy.name} に攻撃！ ${damage} のダメージを与えた！ (敵残りHP: ${Math.max(0, enemy.hp)})`, 'cyan');
-
-            if (enemy.hp <= 0) {
-                enemy.isAlive = false;
-                gameState.player.kills++;
-                addLog(`💥 [${enemy.name}] を撃破しました！`, 'emerald');
-                addKillFeed(`${gameState.player.name} が ${enemy.name} を倒した`);
-                
-                // Loot Item
-                if (enemy.weapon || enemy.armor) {
-                    const loot = enemy.weapon || enemy.armor;
-                    addLog(`戦利品: [${loot.name}] を入手しました。`, 'amber');
-                    if (loot.type === 'weapon' && (!gameState.player.weapon || loot.atk > gameState.player.weapon.atk)) {
-                        gameState.player.weapon = loot;
-                    } else if (loot.type === 'armor' && (!gameState.player.armor || loot.def > gameState.player.armor.def)) {
-                        gameState.player.armor = loot;
-                    }
-                }
-                gameState.inCombatWith = null;
-                endTurn();
-                return;
-            }
-
-            // Enemy Counter-attack
-            enemyCounter();
-        }
-
-        function combatDefend() {
-            if (!gameState.inCombatWith) return;
-            gameState.isGuarding = true;
-            addLog(`🛡️ 防御姿勢をとりました。受けるダメージが半減します。`, 'slate');
-            enemyCounter();
-            gameState.isGuarding = false;
-        }
-
-        function combatUseItem() {
-            if (!gameState.inCombatWith) return;
-            const medIndex = gameState.player.inventory.findIndex(i => i.type === 'med');
-            if (medIndex !== -1) {
-                const med = gameState.player.inventory.splice(medIndex, 1)[0];
-                gameState.player.hp = Math.min(gameState.player.maxHp, gameState.player.hp + med.heal);
-                addLog(`💊 [${med.name}] を使用して HPが ${med.heal} 回復！ (現在HP: ${gameState.player.hp})`, 'emerald');
-                enemyCounter();
-            } else {
-                addLog(`回復アイテムを所持していません！`, 'red');
-            }
-        }
-
-        function combatFlee() {
-            if (!gameState.inCombatWith) return;
-            if (Math.random() < 0.6) {
-                addLog(`💨 戦闘からの離脱に成功しました！`, 'amber');
-                gameState.inCombatWith = null;
-                endTurn();
-            } else {
-                addLog(`❌ 逃走失敗！敵に背後を見せてしまった。`, 'red');
-                enemyCounter();
-            }
-        }
-
-        function enemyCounter() {
-            const enemy = gameState.inCombatWith;
-            if (!enemy || !enemy.isAlive) return;
-
-            const enemyAtk = 10 + (enemy.weapon ? enemy.weapon.atk : 0);
-            const playerDef = (gameState.player.armor ? gameState.player.armor.def : 0) * (PERKS[gameState.player.perk].defMod || 1);
-            
-            let damage = Math.max(3, Math.floor(enemyAtk * (1 - playerDef / 100)));
-            if (gameState.isGuarding) damage = Math.floor(damage * 0.5);
-
-            gameState.player.hp -= damage;
-            addLog(`💥 [${enemy.name}] の反撃！ ${damage} のダメージを受けた！`, 'red');
-
-            if (gameState.player.hp <= 0) {
-                gameState.player.hp = 0;
-                gameOver(false);
-            }
-            updateUI();
-        }
-
-        // --- TURN & BOT SIMULATION ---
-        function endTurn(advanceTurn = true) {
-            if (gameState.isGameOver) return;
-
-            if (advanceTurn) {
-                gameState.turn++;
-
-                // Check Zone Ring shrinking
-                gameState.ringTimer--;
-                if (gameState.ringTimer <= 0) {
-                    shrinkSafeZone();
-                    gameState.ringTimer = 4;
-                }
-
-                // Zone Radiation Damage
-                if (!gameState.safeZoneIds.includes(gameState.player.zoneId)) {
-                    const radDamage = 15;
-                    gameState.player.hp -= radDamage;
-                    addLog(`☢️ 安全地帯外の毒ガスにより ${radDamage} ダメージを受けた！`, 'red');
-                    if (gameState.player.hp <= 0) {
-                        gameState.player.hp = 0;
-                        gameOver(false);
-                        return;
-                    }
-                }
-
-                // Simulate BOT Activity
-                simulateBots();
-
-                // Check for Encounter if not in combat
-                if (!gameState.inCombatWith) {
-                    const localEnemies = gameState.competitors.filter(c => c.isAlive && c.zoneId === gameState.player.zoneId);
-                    if (localEnemies.length > 0 && Math.random() < 0.75) {
-                        const enemy = localEnemies[Math.floor(Math.random() * localEnemies.length)];
-                        startCombat(enemy);
-                    }
-                }
-            }
-
-            // Check Win condition
-            const aliveBots = gameState.competitors.filter(c => c.isAlive).length;
-            if (aliveBots === 0 && gameState.player.hp > 0) {
-                gameOver(true);
-                return;
-            }
-
-            updateUI();
-        }
-
-        function shrinkSafeZone() {
-            if (gameState.safeZoneIds.length <= 1) return;
-            const removed = gameState.safeZoneIds.pop();
-            addLog(`⚠️ 安全地帯が縮小しました！ [${ZONES[removed].name}] が危険区域化！`, 'amber');
-        }
-
-        function simulateBots() {
-            const aliveBots = gameState.competitors.filter(c => c.isAlive);
-            
-            // Random Bot Eliminations & Movements
-            aliveBots.forEach(bot => {
-                // Move if unsafe
-                if (!gameState.safeZoneIds.includes(bot.zoneId) && Math.random() < 0.8) {
-                    bot.zoneId = gameState.safeZoneIds[Math.floor(Math.random() * gameState.safeZoneIds.length)];
-                } else if (Math.random() < 0.3) {
-                    bot.zoneId = Math.floor(Math.random() * 9);
-                }
-
-                // Bot Damage outside ring
-                if (!gameState.safeZoneIds.includes(bot.zoneId)) {
-                    bot.hp -= 20;
-                    if (bot.hp <= 0) {
-                        bot.isAlive = false;
-                        addKillFeed(`${bot.name} が汚染エリアで脱落した`);
-                    }
-                }
-            });
-
-            // Random BOT vs BOT fights
-            for (let i = 0; i < aliveBots.length; i++) {
-                if (!aliveBots[i].isAlive) continue;
-                for (let j = i + 1; j < aliveBots.length; j++) {
-                    if (!aliveBots[j].isAlive) continue;
-
-                    if (aliveBots[i].zoneId === aliveBots[j].zoneId && Math.random() < 0.25) {
-                        // Duel
-                        const winner = Math.random() < 0.5 ? aliveBots[i] : aliveBots[j];
-                        const loser = winner === aliveBots[i] ? aliveBots[j] : aliveBots[i];
-                        loser.isAlive = false;
-                        winner.kills++;
-                        addKillFeed(`${winner.name} が ${loser.name} を倒した`);
-                    }
-                }
-            }
-        }
-
-        function useInventoryItem(index) {
-            if (gameState.isGameOver) return;
-            const item = gameState.player.inventory[index];
-            if (!item) return;
-
-            if (item.type === 'weapon') {
-                const oldWeapon = gameState.player.weapon;
-                gameState.player.weapon = item;
-                gameState.player.inventory.splice(index, 1);
-                if (oldWeapon) gameState.player.inventory.push(oldWeapon);
-                addLog(`装備変更: [${item.name}] を装備しました。`, 'cyan');
-            } else if (item.type === 'armor') {
-                const oldArmor = gameState.player.armor;
-                gameState.player.armor = item;
-                gameState.player.inventory.splice(index, 1);
-                if (oldArmor) gameState.player.inventory.push(oldArmor);
-                addLog(`防具変更: [${item.name}] を装着しました。`, 'cyan');
-            } else if (item.type === 'med') {
-                gameState.player.hp = Math.min(gameState.player.maxHp, gameState.player.hp + item.heal);
-                gameState.player.inventory.splice(index, 1);
-                addLog(`回復使用: [${item.name}] で HPが ${item.heal} 回復！`, 'emerald');
-            }
-            updateUI();
-        }
-
-        function gameOver(isWin) {
-            gameState.isGameOver = true;
-            const aliveBots = gameState.competitors.filter(c => c.isAlive).length;
-            const rank = isWin ? 1 : aliveBots + 1;
-
-            document.getElementById('end-title').innerText = isWin ? "VICTORY ROYALE!" : "DEFEAT...";
-            document.getElementById('end-title').className = isWin ? "text-2xl font-extrabold tracking-wider text-amber-400 glow-cyan" : "text-2xl font-extrabold tracking-wider text-red-500 glow-red";
-            document.getElementById('end-subtitle').innerText = isWin ? "最後の1人として生き残りました！ドン勝つ！" : "戦場にて倒れました。";
-            document.getElementById('end-rank').innerText = `#${rank} / ${gameState.maxPlayers}`;
-            document.getElementById('end-kills').innerText = gameState.player.kills;
-            document.getElementById('end-turns').innerText = gameState.turn;
-            document.getElementById('end-perk').innerText = PERKS[gameState.player.perk].name;
-
-            document.getElementById('end-screen').classList.remove('hidden');
-        }
-
-        // --- UI RENDER & UPDATE ---
-        function updateUI() {
-            if (!gameState.player) return;
-
-            const aliveCount = gameState.competitors.filter(c => c.isAlive).length + (gameState.player.hp > 0 ? 1 : 0);
-            
-            // Header Stats
-            document.getElementById('header-alive').innerText = aliveCount;
-            document.getElementById('header-total').innerText = gameState.maxPlayers;
-            document.getElementById('header-kills').innerText = gameState.player.kills;
-            document.getElementById('header-turn').innerText = gameState.turn;
-
-            // Player Card
-            document.getElementById('player-name-display').innerText = gameState.player.name;
-            document.getElementById('player-perk-tag').innerText = PERKS[gameState.player.perk].name;
-            document.getElementById('hp-text').innerText = `${gameState.player.hp} / ${gameState.player.maxHp}`;
-            
-            const hpPercent = Math.max(0, (gameState.player.hp / gameState.player.maxHp) * 100);
-            document.getElementById('hp-bar').style.width = `${hpPercent}%`;
-
-            const armorDef = gameState.player.armor ? gameState.player.armor.def : 0;
-            const totalAtk = 10 + (gameState.player.weapon ? gameState.player.weapon.atk : 0);
-            document.getElementById('status-armor').innerText = `${armorDef}%`;
-            document.getElementById('status-atk').innerText = totalAtk;
-
-            // Equipment & Inventory
-            document.getElementById('eq-weapon').innerText = gameState.player.weapon ? gameState.player.weapon.name : "素手 (ATK +0)";
-            document.getElementById('eq-armor').innerText = gameState.player.armor ? gameState.player.armor.name : "なし (DEF 0%)";
-            document.getElementById('inventory-capacity').innerText = `${gameState.player.inventory.length}/6 Slots`;
-
-            const invList = document.getElementById('inventory-list');
-            invList.innerHTML = '';
-            gameState.player.inventory.forEach((item, index) => {
-                const itemDiv = document.createElement('div');
-                itemDiv.className = "bg-slate-950 p-2 rounded-lg border border-slate-800 flex justify-between items-center text-xs hover:border-slate-700 transition";
-                itemDiv.innerHTML = `
-                    <div class="flex items-center gap-2 overflow-hidden">
-                        <i class="fa-solid ${item.icon} text-cyan-400"></i>
-                        <span class="truncate text-slate-300 font-medium">${item.name}</span>
-                    </div>
-                    <button onclick="useInventoryItem(${index})" class="px-2 py-1 bg-slate-800 hover:bg-cyan-900/60 text-cyan-300 rounded border border-slate-700 text-[10px] shrink-0">
-                        ${item.type === 'med' ? '使用' : '装備'}
-                    </button>
-                `;
-                invList.appendChild(itemDiv);
-            });
-
-            // Map Render
-            ZONES.forEach(z => {
-                const cell = document.getElementById(`cell-${z.id}`);
-                const isPlayerHere = gameState.player.zoneId === z.id;
-                const isSafe = gameState.safeZoneIds.includes(z.id);
-                const enemiesInZone = gameState.competitors.filter(c => c.isAlive && c.zoneId === z.id).length;
-
-                cell.className = `bg-slate-950 border rounded-xl p-2 flex flex-col justify-between cursor-pointer transition relative overflow-hidden group ${
-                    isPlayerHere ? 'border-cyan-400 ring-1 ring-cyan-400/50 bg-slate-900' : isSafe ? 'border-slate-800 hover:border-slate-700' : 'border-red-900/80 bg-red-950/20'
-                }`;
-
-                cell.innerHTML = `
-                    <div class="flex justify-between items-start text-xs">
-                        <span class="font-bold ${isPlayerHere ? 'text-cyan-400' : 'text-slate-300'}">${z.name}</span>
-                        <span class="text-[9px] px-1.5 py-0.5 rounded font-bold ${isSafe ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-red-950 text-red-400 border border-red-800'}">
-                            ${isSafe ? 'SAFE' : 'DANGER'}
-                        </span>
-                    </div>
-                    <div class="flex justify-between items-end mt-4">
-                        <div class="text-[11px] text-slate-500">
-                            ${enemiesInZone > 0 ? `<span class="text-amber-400 font-bold"><i class="fa-solid fa-user-ninja mr-1"></i>${enemiesInZone}</span>` : '<span class="text-slate-600">気配なし</span>'}
-                        </div>
-                        ${isPlayerHere ? '<span class="text-xs text-cyan-400 font-extrabold glow-cyan"><i class="fa-solid fa-location-dot mr-1"></i>現在地</span>' : ''}
-                    </div>
-                `;
-            });
-
-            // Controls Toggle (Normal vs Combat)
-            const normalControls = document.getElementById('normal-controls');
-            const combatControls = document.getElementById('combat-controls');
-
-            if (gameState.inCombatWith) {
-                normalControls.classList.add('hidden');
-                combatControls.classList.remove('hidden');
-                combatControls.classList.add('grid');
-            } else {
-                normalControls.classList.remove('hidden');
-                combatControls.classList.add('hidden');
-                combatControls.classList.remove('grid');
-            }
-
-            document.getElementById('ring-status').innerText = `安全地帯収縮まで: ${gameState.ringTimer}ターン`;
-        }
-
-        // Event Listener Bindings
-        window.onload = function() {
-            document.getElementById('btn-toggle-bgm').onclick = toggleBGM;
-            document.getElementById('btn-start-game').onclick = initGame;
-            document.getElementById('btn-return-lobby').onclick = () => {
-                document.getElementById('end-screen').classList.add('hidden');
-                document.getElementById('start-screen').classList.remove('hidden');
-            };
-
-            document.getElementById('btn-action-search').onclick = actionSearch;
-            document.getElementById('btn-action-rest').onclick = actionRest;
-            document.getElementById('btn-action-scan').onclick = actionScan;
-            document.getElementById('btn-action-move').onclick = openMoveModal;
-
-            // Combat Actions
-            document.getElementById('btn-combat-attack').onclick = combatAttack;
-            document.getElementById('btn-combat-defend').onclick = combatDefend;
-            document.getElementById('btn-combat-item').onclick = combatUseItem;
-            document.getElementById('btn-combat-flee').onclick = combatFlee;
-
-            document.getElementById('btn-close-move').onclick = () => {
-                document.getElementById('move-modal').classList.add('hidden');
-            };
-        };
-    </script>
-</body>
-</html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>暗黒の螺旋回廊 — テキストRPG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e9e4d6;--panel:#f5f1e6;--ink:#23212a;--dim:#6b6759;--line:#c9c2ae;--accent:#2d4a7a;--hp:#a6323f;
+color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12131c;--panel:#1b1d2b;--ink:#e7e2d0;--dim:#8c8a80;--line:#2f3245;--accent:#d2a94f;--hp:#d0606b;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#12131c;--panel:#1b1d2b;--ink:#e7e2d0;--dim:#8c8a80;--line:#2f3245;--accent:#d2a94f;--hp:#d0606b;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Shippori Mincho','Hiragino Mincho ProN','Yu Mincho',serif;line-height:1.7}
+#app{max-width:520px;margin:0 auto;padding:14px}
+h1{font-size:26px;margin:4px 0 12px;letter-spacing:.2em}
+.party{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.pm{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:6px 9px;font-size:14px;line-height:1.5}
+.pm i{font-style:normal;color:var(--dim);font-size:12px;margin-left:4px}
+.pm span{display:block;font-size:13px}
+.pm.dead{opacity:.45}.pm.dead b{text-decoration:line-through}
+.pm.cur{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.gold{text-align:right;font-size:13px;color:var(--dim);margin:6px 2px}
+.stage{display:flex;gap:12px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:14px;margin-bottom:10px}
+.view{flex:1;font-size:17px}.view small{display:block;color:var(--dim);font-size:13px}
+.view p{margin:0 0 6px}
+.map{display:grid;grid-template-columns:repeat(11,13px);gap:1px}
+.map i{display:block;width:13px;height:13px;font-style:normal;font-size:10px;line-height:13px;text-align:center}
+.map .w{background:var(--line)}.map .f{background:var(--bg)}.map .p{color:var(--accent);font-weight:700;background:var(--bg)}
+.log{min-height:112px;margin-bottom:10px;padding:0 2px}
+.log p{margin:0 0 2px;font-size:14px;color:var(--dim)}.log p:last-child{color:var(--ink)}
+button{font:inherit;font-size:16px;min-height:46px;padding:6px 12px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:4px;cursor:pointer}
+button:active{border-color:var(--accent)}
+button:disabled{opacity:.4;cursor:default}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.dpad,.row{display:grid;gap:6px;margin-bottom:6px}
+.dpad{grid-template-columns:repeat(3,1fr)}.row{grid-template-columns:1fr 1fr}
+.main{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:700}
+.en{width:100%;text-align:left;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.en.dead{text-decoration:line-through}
+.bar{display:inline-block;width:70px;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar s{display:block;height:100%;background:var(--hp)}
+.who{font-size:15px;margin:0 0 6px}
+.foes{display:flex;justify-content:center;align-items:flex-end;gap:10px;min-height:120px;margin-bottom:10px;padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:4px}
+.foes figure{margin:0;text-align:center;font-size:12px;color:var(--dim)}
+.foes svg{display:block;width:96px;height:96px;margin:0 auto 2px}
+.foes.boss svg{width:150px;height:150px}
+.foes .gone{opacity:.15;filter:grayscale(1)}
+@keyframes bob{50%{transform:translateY(-3px)}}
+@media (prefers-reduced-motion:no-preference){.foes figure:not(.gone) svg{animation:bob 1.1s steps(1) infinite}}
+.g{display:flex;align-items:center;gap:6px;font-size:12px;line-height:1.5}.g em{font-style:normal;width:20px;color:var(--dim)}.g u{flex:1;height:7px;background:var(--line);border-radius:4px;overflow:hidden}.g u s{display:block;height:100%;background:var(--hp)}.g.mp u s{background:#4f86c6}.g var{font-style:normal;min-width:48px;text-align:right}
+input,select{font:inherit;font-size:16px;min-height:46px;min-width:0;padding:6px 10px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:4px}
+@media (prefers-reduced-motion:no-preference){.pm{transition:border-color .2s}}
+</style></head>
+<body><div id="app"></div>
+<script>
+const SK='dungeon-save-v2';
+const CL={戦士:[30,0,7],僧侶:[20,8,4],魔術師:[15,10,3],盗賊:[19,0,6]};
+const EN=[{n:'スライム',hp:9,atk:4,xp:6,g:6},{n:'ゴブリン',hp:14,atk:6,xp:10,g:10},{n:'スケルトン',hp:20,atk:9,xp:16,g:16},{n:'オーク',hp:30,atk:12,xp:26,g:26},{n:'亡霊',hp:36,atk:15,xp:38,g:36},{n:'石像',hp:56,atk:18,xp:55,g:50},{n:'吸血鬼',hp:60,atk:21,xp:75,g:70},{n:'魔狼',hp:72,atk:24,xp:100,g:95},{n:'竜牙兵',hp:88,atk:27,xp:135,g:130},{n:'魔神',hp:105,atk:30,xp:180,g:180}];
+const BOSS={n:'大魔導師ヴォルグ',hp:420,atk:32,xp:900,g:1000,boss:1};
+const WEP=[{n:'鉄の剣',a:3,p:80},{n:'戦斧',a:5,p:160},{n:'鋼の剣',a:7,p:260},{n:'聖銀の剣',a:10,p:420},{n:'魔剣',a:13,p:640},{n:'竜殺しの剣',a:17,p:900}];
+const ARM=[{n:'革の鎧',d:2,p:70},{n:'鎖帷子',d:4,p:150},{n:'鋼の鎧',d:6,p:250},{n:'聖銀の鎧',d:9,p:400},{n:'魔鎧',d:12,p:620},{n:'竜鱗の鎧',d:16,p:880}];
+let MAP;
+function gen(f){
+  let s=f*7919+13+((G&&G.loop)||0)*104729+((G&&G.seed)||0);const r=()=>(s=s*16807%2147483647)/2147483647;
+  const g=Array.from({length:11},()=>Array(11).fill('#')),st=[[1,1]];g[1][1]='.';
+  while(st.length){
+    const[x,y]=st[st.length-1];
+    const n=[[2,0],[-2,0],[0,2],[0,-2]].filter(([a,b])=>x+a>0&&x+a<10&&y+b>0&&y+b<10&&g[y+b][x+a]==='#');
+    if(!n.length){st.pop();continue}
+    const[a,b]=n[Math.floor(r()*n.length)];g[y+b/2][x+a/2]='.';g[y+b][x+a]='.';st.push([x+a,y+b]);
+  }
+  const D={'1,1':0},q=[[1,1]];let far=[1,1];
+  for(let i=0;i<q.length;i++){const[x,y]=q[i];far=[x,y];
+    for(const[a,b]of DIRS){const k=(x+a)+','+(y+b);if(g[y+b][x+a]!=='#'&&!(k in D)){D[k]=1;q.push([x+a,y+b])}}}
+  const de=[];
+  for(let y=1;y<10;y+=2)for(let x=1;x<10;x+=2)
+    if(DIRS.filter(([a,b])=>g[y+b][x+a]!=='#').length===1&&!(x===1&&y===1)&&!(x===far[0]&&y===far[1]))de.push([x,y]);
+  for(let i=0;i<2&&de.length;i++){const[x,y]=de.splice(Math.floor(r()*de.length),1)[0];g[y][x]='T'}
+  g[far[1]][far[0]]=f===10?'B':'D';g[1][1]='S';g.d=far;return g;
+}
+function newGame(){G={mode:'create',party:[],log:[],gold:0};render()}
+function createView(){
+  const df=['ガイウス','ミリア','ゼノン','リーゼ'],dc=['戦士','僧侶','魔術師','盗賊'];
+  let sv='';try{sv=localStorage.getItem(SK)||''}catch(e){}
+  document.getElementById('app').innerHTML='<h1>暗黒の螺旋回廊</h1><p>名前と職業を選んで、4人の冒険者を作ろう。</p>'
+  +df.map((n,i)=>`<div class="row"><input id="n${i}" value="${n}" maxlength="6" aria-label="名前${i+1}"><select id="c${i}">${Object.keys(CL).map(c=>`<option value="${c}"${c===dc[i]?' selected':''}>${c}</option>`).join('')}</select></div>`).join('')
+  +'<button class="main" style="width:100%;margin-bottom:6px" onclick="begin()">冒険を始める</button>'
+  +(sv?'<button style="width:100%" onclick="loadGame()">続きから</button>':'');
+}
+function begin(){startGame([0,1,2,3].map(i=>{
+  const c=document.getElementById('c'+i).value,[h,m,a]=CL[c];
+  return mk((document.getElementById('n'+i).value||'名無し').replace(/[<>&"']/g,''),c,h,m,a)}))}
+function save(){try{
+  if(G.mode==='explore')localStorage.setItem(SK,JSON.stringify({...G,seen:[...G.seen],log:G.log.slice(-6)}));
+  else if(G.mode==='win'){const s=loopState();s.seen=[];localStorage.setItem(SK,JSON.stringify(s))}
+  else if(G.mode==='over')localStorage.removeItem(SK);
+}catch(e){}}
+function loadGame(){try{
+  const s=JSON.parse(localStorage.getItem(SK));s.seen=new Set(s.seen);G=s;MAP=gen(G.F);G.menu=null;log('冒険を再開した。');render();
+}catch(e){newGame()}}
+const SP={
+'スライム':[['#52b36b','#1f5c36','#b4ecc0','#111'],['......','......','....bb','..bbaa','.baaaa','.bacaa','baaeaa','baaeaa','baaaaa','baaaaa','.bbbbb','......']],
+'ゴブリン':[['#6f9e3a','#2d4a14','#e8e0c0','#e33'],['......','..bbbb','b.baaa','bbaaaa','.baeaa','.baaaa','..bccc','..bbbb','.bbaaa','.baaaa','.baab.','.bb...']],
+'スケルトン':[['#e8e4d4','#4a4a58','#9a9a9a','#111'],['......','..bbbb','.baaaa','.baaaa','.beeaa','.beeaa','..bbcc','...bba','.bccaa','..bbaa','.bccaa','..b.aa']],
+'オーク':[['#7a8f4e','#2f3a1a','#f2f2e0','#f33'],['......','..bbbb','.baaaa','.baaaa','.beeaa','.baaaa','bcabbb','..bbbb','bbaaaa','baaaaa','.baaaa','.bb.bb']],
+'亡霊':[['#d8dcf0','#7a80b0','#ffffff','#222'],['......','...bbb','..baaa','.baaaa','.baaaa','.baeea','.baeea','.baaaa','.baaaa','.baaaa','.ba.ba','.b..b.']],
+'石像':[['#8c8f99','#3a3c44','#c4c7d0','#f5c542'],['b.....','bb..bb','.baaaa','.baeea','.baaaa','..bbcc','bbbaaa','bcbaaa','bcbaaa','.bbaaa','..baab','..bb.b']],
+'吸血鬼':[['#e6dccb','#3a1230','#b3243a','#e22'],['......','..bbbb','.bbbbb','.baaaa','.baeea','.baaaa','..baca','..bbbb','bcbbbb','bcbbbb','bbbbbb','bb.bb.']],
+'魔狼':[['#6b6f85','#25283a','#e8e8f0','#ffd23a'],['b.....','bb....','baaaaa','baaaaa','baeeaa','baaaaa','.baaaa','..bbaa','..bcab','..bbbb','......','......']],
+'竜牙兵':[['#d9cfa5','#5a3a1e','#c0392b','#ff5a1f'],['b.....','bbbbbb','baaaaa','baeeaa','baeeaa','.baaaa','..bccc','..cbbb','bbbaaa','bcbaaa','bbb.aa','..bb..']],
+'魔神':[['#b3263a','#4a0f1a','#f2c14e','#ffe066'],['c.....','cc....','.cbbbb','..baaa','..beea','..baaa','..bccc','..bbbb','bbaaaa','baaaaa','baa.aa','bb..bb']],
+'大魔導師ヴォルグ':[['#d8c0a8','#3a2a78','#f0ece0','#ff4040'],['.....b','....bb','...bbb','..bbcb','bbbbbb','..baaa','..beea','..bccc','.bbccc','bbbbcc','bbbbbb','bbbbbb']]
+};
+function spr(n){
+  const s=SP[n.split(' ')[0]];if(!s)return '';
+  const p={a:s[0][0],b:s[0][1],c:s[0][2],e:s[0][3]};let r='';
+  s[1].forEach((row,y)=>[...(row+[...row].reverse().join(''))].forEach((c,x)=>{if(c!=='.')r+=`<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${p[c]}"/>`}));
+  return `<svg viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true">${r}</svg>`;
+}
+let AT,LT,SHOWN=0;
+function typeLog(){
+  const ps=[...document.querySelectorAll('.log p')],n=Math.min(ps.length,Math.max(0,G.log.length-SHOWN));
+  SHOWN=G.log.length;clearInterval(LT);
+  if(!n)return 0;
+  const todo=ps.slice(ps.length-n),txt=todo.map(p=>p.textContent);
+  todo.forEach(p=>p.textContent='\u00a0');
+  let i=0,j=0;
+  const done=()=>{clearInterval(LT);todo.forEach((p,k)=>p.textContent=txt[k])};
+  LT=setInterval(()=>{
+    if(i>=todo.length)return clearInterval(LT);
+    todo[i].textContent=txt[i].slice(0,++j);
+    if(j>=txt[i].length){i++;j=0}
+  },18);
+  document.querySelector('.log').onclick=done;
+  return txt.reduce((s,t)=>s+t.length,0)*18;
+}
+const gb=(l,v,mx,c)=>`<div class="g ${c}"><em>${l}</em><u><s style="width:${mx?Math.max(0,v)/mx*100:0}%"></s></u><var>${mx?v+'/'+mx:'－'}</var></div>`;
+function render(){
+  if(G.mode==='create'){createView();return tx(document.getElementById('app'))}
+  render0();tx(document.getElementById('app'));const tm=typeLog();save();setBgm(G.mode==='over'?'':G.mode==='battle'?'battle':'field');
+  clearTimeout(AT);
+  if(G.mode==='battle'&&G.auto&&!G.pending)AT=setTimeout(autoRound,800+tm);
+}
+function autoRound(){
+  if(G.mode!=='battle'||!G.auto)return;
+  const live=()=>G.enemies.map((e,i)=>[e,i]).filter(([e])=>e.hp>0);
+  const pick=()=>live().sort((a,b)=>a[0].hp-b[0].hp)[0][1];
+  const al=G.party.map((p,i)=>[p,i]).filter(([p])=>p.hp>0);
+  const weak=al.slice().sort((a,b)=>a[0].hp/a[0].max-b[0].hp/b[0].max)[0],r=weak[0].hp/weak[0].max;
+  let herb=G.herb;G.actions=[];
+  for(const[m,i]of al){
+    let a={t:'atk',tg:pick()};
+    if(m.c==='僧侶'&&m.mp>=2&&r<.5)a={t:'heal',tg:weak[1]};
+    else if(m.c==='魔術師'&&m.mp>=3&&(live().length>1||G.isBoss))a={t:'fire'};
+    else if(r<.3&&herb>0){a={t:'herb',tg:weak[1]};herb--}
+    a.m=i;G.actions.push(a);
+  }
+  resolve();
+}
+function give(it){
+  const f=it.k==='w'?'w':'ar',v=it.k==='w'?'a':'d',cur=p=>p[f]?p[f][v]:0;
+  const al=G.party.filter(p=>p.hp>0).sort((a,b)=>cur(a)-cur(b))[0];
+  if(al&&cur(al)<it[v]){al[f]={n:it.n,[v]:it[v]};return `${it.n}を${al.n}が装備した。`}
+  G.gold+=Math.floor(it.p/2);return `${it.n}を拾ったが、売り払った。`;
+}
+function chest(){
+  const th=G.party.some(p=>p.c==='盗賊'&&p.hp>0);let tr='';
+  if(Math.random()<(th?.12:.4)){const d=10;G.party.forEach(p=>{if(p.hp>0)p.hp=Math.max(1,p.hp-d)});tr=`罠だ！毒矢が飛び出し、全員に${d}のダメージ。`}
+  const g=rnd(30,60)*G.F;G.gold+=g;let s=tr+`宝箱を見つけた。${g}Gを手に入れた。`;
+  if(Math.random()<.5){const n=rnd(1,2);G.herb+=n;s+=`薬草を${n}個拾った。`}
+  if(Math.random()<.5){const t=Math.min(5,Math.floor((G.F-1)/2)+(Math.random()<.3?1:0));
+    s+=give(Math.random()<.5?{k:'w',...WEP[t]}:{k:'a',...ARM[t]})}
+  log(s);
+}
+function enter(f,end){
+  G.F=f;G.maxF=Math.max(G.maxF,f);MAP=gen(f);[G.x,G.y]=end?MAP.d:[1,1];
+  G.d=DIRS.findIndex(([a,b])=>open(G.x+a,G.y+b));see();log(f===1&&!end?'入口の街に戻った。':`地下${f}階。`);render();
+}
+const stairs=d=>enter(G.F+d,d<0),warp=()=>enter(G.maxF,false);
+function useOrb(){if(G.orb<1){log('帰還の玉を持っていない。');return render()}G.orb--;enter(1,false)}
+function menu(m){G.menu=m;render()}
+function loopState(){return{...G,mode:'explore',boss:false,chests:{},seen:new Set(),F:1,maxF:1,x:1,y:1,d:2,steps:0,loop:(G.loop||0)+1,seed:Math.floor(Math.random()*1e9),menu:null,enemies:[]}}
+function newLoop(){
+  G=loopState();MAP=gen(1);G.d=Math.max(0,DIRS.findIndex(([a,b])=>open(1+a,1+b)));see();
+  G.log=[`${G.loop+1}周目の始まり。迷宮の構造が変わり、敵も強くなった。`];render();
+}
+function doRename(){
+  G.party.forEach((p,i)=>{const v=document.getElementById('rn'+i).value.replace(/[<>&"']/g,'').trim();if(v)p.n=v});
+  G.menu=null;log('名前を変更した。');render();
+}
+function useHerb(i){
+  const p=G.party[i];
+  if(G.herb<1||p.hp<=0)log('薬草は使えない。');
+  else{G.herb--;p.hp=Math.min(p.max,p.hp+30);log(`${p.n}は薬草でHP30回復した。`)}
+  G.menu=null;render();
+}
+function buy(k,i){
+  const it=k==='herb'?{p:20}:k==='orb'?{p:100}:k==='w'?{k,...WEP[i]}:{k,...ARM[i]};
+  if(G.gold<it.p){log('お金が足りない。');return render()}
+  if(k==='herb')G.herb++;else if(k==='orb')G.orb++;
+  else{
+    const f=k==='w'?'w':'ar',v=k==='w'?'a':'d';
+    if(!G.party.some(p=>p.hp>0&&(p[f]?p[f][v]:0)<it[v])){log('今の装備で十分だ。');return render()}
+    log(give(it));
+  }
+  G.gold-=it.p;render();
+}
+function extra(){
+  const c=MAP[G.y][G.x],wide='class="main" style="width:100%;margin-bottom:6px"';let h='';
+  if(G.F===1&&c==='S')h+=`<div class="row"><button onclick="rest()">宿で休む（10G）</button><button onclick="revive()">蘇生する（80G）</button><button onclick="menu('shop')">店</button>${G.maxF>1?`<button onclick="warp()">最深階へ（地下${G.maxF}階）</button>`:''}</div>`;
+  if(c==='S'&&G.F>1)h+=`<button ${wide} onclick="stairs(-1)">階段を上る</button>`;
+  if(c==='D')h+=`<button ${wide} onclick="stairs(1)">階段を下りる</button>`;
+  return h+`<div class="row"><button onclick="menu('herb')">薬草（${G.herb}）</button><button onclick="useOrb()">帰還の玉（${G.orb}）</button><button onclick="menu('rename')">名前変更</button></div>`;
+}
+function menuView(){
+  const back='<button style="width:100%" onclick="menu(null)">戻る</button>';
+  if(G.menu==='rename')return `<p class="who">名前を変更（6文字まで）</p>${G.party.map((p,i)=>`<div class="row"><input id="rn${i}" value="${p.n}" maxlength="6" aria-label="${p.c}の名前"></div>`).join('')}<button class="main" style="width:100%;margin-bottom:6px" onclick="doRename()">決定</button>${back}`;
+  if(G.menu==='herb')return `<p class="who">薬草（${G.herb}）を誰に使う？</p><div class="row">${G.party.map((p,i)=>`<button onclick="useHerb(${i})">${p.n}（${p.hp}/${p.max}）</button>`).join('')}</div>${back}`;
+  return `<p class="who">店　所持金 ${G.gold}G</p><div class="row"><button onclick="buy('herb')">薬草 20G</button><button onclick="buy('orb')">帰還の玉 100G</button>${WEP.map((w,i)=>`<button onclick="buy('w',${i})">${w.n} 攻+${w.a}　${w.p}G</button>`).join('')}${ARM.map((a,i)=>`<button onclick="buy('a',${i})">${a.n} 防+${a.d}　${a.p}G</button>`).join('')}</div>${back}`;
+}
+function go(k){
+  const[dx,dy]=DIRS[(G.d+k)%4],nx=G.x+dx,ny=G.y+dy;
+  if(!open(nx,ny)){log('石壁に阻まれた。');return render()}
+  G.x=nx;G.y=ny;G.steps++;see();
+  const c=MAP[ny][nx],key=G.F+':'+nx+','+ny;
+  if(c==='T'&&!G.chests[key]){G.chests[key]=1;chest()}
+  if(c==='B'&&!G.boss){log('玉座の間。大魔導師ヴォルグがゆっくりと振り向いた。');return battle(true)}
+  if(c!=='S'&&Math.random()<.17)return battle(false);
+  render();
+}
+const DIRS=[[0,-1],[1,0],[0,1],[-1,0]],DN=['北','東','南','西'],ARW='▲▶▼◀';
+const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const mk=(n,c,hp,mp,atk)=>({n,c,hp,max:hp,mp,mmp:mp,atk,lv:1,xp:0,def:false});
+let G;
+function startGame(party){
+  G={party,seed:Math.floor(Math.random()*1e9),herb:2,orb:0,F:1,maxF:1,menu:null,
+  gold:150,x:1,y:1,d:2,steps:0,seen:new Set(),mode:'explore',chests:{},boss:false,
+  log:['迷宮の入口に立った。奥には大魔導師が潜むという。']};MAP=gen(1);
+  see();render();
+}
+const log=s=>G.log.push(s);
+function see(){for(let j=-1;j<=1;j++)for(let i=-1;i<=1;i++)G.seen.add(G.F+':'+(G.x+i)+','+(G.y+j));}
+const open=(x,y)=>MAP[y][x]!=='#';
+function front(){let n=0,x=G.x,y=G.y;const[dx,dy]=DIRS[G.d];while(open(x+dx,y+dy)){x+=dx;y+=dy;n++}return n}
+function side(k){const[dx,dy]=DIRS[(G.d+k)%4];return open(G.x+dx,G.y+dy)}
+function turn(k){G.d=(G.d+k)%4;render()}
+function rest(){
+  if(G.gold<10){log('宿代の10Gが足りない。');return render()}
+  G.gold-=10;G.party.forEach(p=>{if(p.hp>0){p.hp=p.max;p.mp=p.mmp}});log('宿で眠り、生きている仲間は全回復した。');render();
+}
+function revive(){
+  const i=G.party.findIndex(p=>p.hp<=0);
+  if(i<0||G.gold<80){log(i<0?'蘇生が必要な仲間はいない。':'蘇生には80G必要だ。');return render()}
+  G.gold-=80;const p=G.party[i];
+  if(Math.random()<.7){p.hp=Math.ceil(p.max/2);log(`${p.n}は蘇生した。`)}
+  else{G.party.splice(i,1);log(`蘇生は失敗した。${p.n}は灰になった（ロスト）。`)}
+  render();
+}
+function battle(boss){
+  let es;
+  if(boss)es=[{...BOSS}];
+  else{const t=G.F-1,n=rnd(1,3);
+    es=Array.from({length:n},()=>({...EN[Math.max(0,Math.min(9,t+rnd(-1,0)))]}));
+    if(n>1)es.forEach((e,i)=>e.n+=' '+'ABC'[i]);}
+  const k=1+.5*(G.loop||0);es.forEach(e=>{e.hp=Math.round(e.hp*k);e.atk=Math.round(e.atk*k);e.xp=Math.round(e.xp*k);e.g=Math.round(e.g*k);e.max=e.hp});
+  Object.assign(G,{mode:'battle',auto:false,enemies:es,isBoss:boss,round:1,actions:[],pending:null,cur:G.party.findIndex(p=>p.hp>0)});
+  log(es.map(e=>e.n).join('、')+'が現れた！');render();
+}
+function act(t){
+  const m=G.party[G.cur];
+  if(t==='auto'){G.auto=true;return render()}
+  if(t==='atk'){G.pending='atk';return render()}
+  if(t==='spell'){
+    if(m.c==='魔術師'){if(m.mp<3){log('MPが足りない。');return render()}return push({t:'fire'})}
+    if(m.mp<2){log('MPが足りない。');return render()}
+    G.pending='heal';return render();
+  }
+  if(t==='item'){if(G.herb<1){log('薬草がない。');return render()}G.pending='herb';return render()}
+  if(t==='def')return push({t:'def'});
+  if(t==='run')return run();
+}
+function push(a){a.m=G.cur;G.actions.push(a);G.pending=null;advance()}
+function advance(){
+  let n=G.cur+1;while(n<G.party.length&&G.party[n].hp<=0)n++;
+  if(n>=G.party.length)resolve();else{G.cur=n;render()}
+}
+const tgt=i=>G.pending==='atk'&&push({t:'atk',tg:i});
+function healT(i){if(G.pending==='heal')push({t:'heal',tg:i});else if(G.pending==='herb')push({t:'herb',tg:i})}
+const cancel=()=>{G.pending=null;render()};
+function run(){
+  if(G.isBoss){log('ヴォルグからは逃げられない！');return render()}
+  if(Math.random()<.5){log('パーティは逃げ出した。');G.mode='explore';return render()}
+  log('逃げられなかった！');enemiesTurn();
+}
+function hurt(e,d){e.hp-=d;if(e.hp<=0)log(`${e.n}を倒した。`)}
+function resolve(){
+  for(const a of G.actions){
+    const m=G.party[a.m];if(m.hp<=0)continue;
+    const live=G.enemies.filter(e=>e.hp>0);
+    if(a.t==='atk'){
+      let e=G.enemies[a.tg];if(!e||e.hp<=0)e=live[0];
+      let d=m.atk+(m.w?m.w.a:0)+rnd(0,m.lv+3),c='';
+      if(m.c==='盗賊'&&Math.random()<.25){d*=2;c='急所を突いた！'}
+      log(`${m.n}の攻撃！${c}${e.n}に${d}のダメージ。`);hurt(e,d);
+    }else if(a.t==='fire'){
+      m.mp-=3;const d=rnd(7,10)+m.lv*2;
+      log(`${m.n}の火球！敵全体に${d}のダメージ。`);live.forEach(e=>hurt(e,d));
+    }else if(a.t==='heal'){
+      m.mp-=2;const t=G.party[a.tg];
+      if(t.hp<=0)log(`${m.n}の癒し。${t.n}には効かなかった。`);
+      else{const h=rnd(10,14)+m.lv*3;t.hp=Math.min(t.max,t.hp+h);log(`${m.n}の癒し。${t.n}のHPが${h}回復。`)}
+    }else if(a.t==='herb'){const t=G.party[a.tg];if(G.herb>0&&t.hp>0){G.herb--;t.hp=Math.min(t.max,t.hp+30);log(`${m.n}は${t.n}に薬草を使った。HP30回復。`)}else log('薬草は効かなかった。')}else if(a.t==='def'){m.def=true;log(`${m.n}は身を固めた。`)}
+    if(!G.enemies.some(e=>e.hp>0))return victory();
+  }
+  enemiesTurn();
+}
+function enemiesTurn(){
+  const alive=()=>G.party.filter(p=>p.hp>0);
+  const dmg=(p,d)=>{p.hp-=d;if(p.hp<=0){p.hp=0;log(`${p.n}は倒れた…`)}};
+  for(const e of G.enemies){
+    if(e.hp<=0||!alive().length)continue;
+    if(e.boss&&G.round%3===0){const d=rnd(10,16);log(`${e.n}の闇の炎！全員に${d}のダメージ。`);alive().forEach(p=>dmg(p,d));continue}
+    const al=alive(),p=al[rnd(0,al.length-1)];
+    if(Math.random()<.15){log(`${e.n}の攻撃は外れた。`);continue}
+    let d=rnd(Math.ceil(e.atk*.6),e.atk);d=Math.max(1,d-(p.ar?p.ar.d:0));if(p.def)d=Math.max(1,Math.floor(d/2));
+    log(`${e.n}の攻撃！${p.n}に${d}のダメージ。`);dmg(p,d);
+  }
+  G.party.forEach(p=>p.def=false);
+  if(!alive().length){G.mode='over';log('パーティは全滅した…');return render()}
+  G.round++;G.actions=[];G.pending=null;G.cur=G.party.findIndex(p=>p.hp>0);render();
+}
+function victory(){
+  const xp=G.enemies.reduce((s,e)=>s+e.xp,0),g=G.enemies.reduce((s,e)=>s+e.g,0);
+  const al=G.party.filter(p=>p.hp>0),each=Math.ceil(xp/al.length);
+  G.gold+=g;log(`勝利！ 各自${each}の経験値と${g}Gを得た。`);if(Math.random()<.25){G.herb++;log('薬草を拾った。')}
+  al.forEach(m=>{m.xp+=each;while(m.xp>=m.lv*25){
+    m.xp-=m.lv*25;m.lv++;const u=rnd(6,10)+(m.c==='戦士'?3:0);m.max+=u;m.hp+=u;
+    if(m.mmp){m.mmp+=2;m.mp+=2}m.atk++;
+    log(`${m.n}はレベル${m.lv}に上がった！`)}});
+  if(G.isBoss){G.boss=true;G.mode='win'}else G.mode='explore';
+  G.enemies=[];render();
+}
+function mapHtml(){
+  let h='';
+  for(let y=0;y<11;y++)for(let x=0;x<11;x++){
+    if(x===G.x&&y===G.y){h+=`<i class="p">${ARW[G.d]}</i>`;continue}
+    if(!G.seen.has(G.F+':'+x+','+y)){h+='<i></i>';continue}
+    const c=MAP[y][x];
+    if(c==='#')h+='<i class="w"></i>';
+    else if(c==='T'&&!G.chests[G.F+':'+x+','+y])h+='<i class="f">◇</i>';
+    else if(c==='B'&&!G.boss)h+='<i class="f">☠</i>';
+    else if(c==='D')h+='<i class="f">▽</i>';else h+='<i class="f"></i>';
+  }
+  return `<div class="map" aria-label="地図">${h}</div>`;
+}
+function exploreView(){
+  const f=front();
+  const main=`<div class="stage"><div class="view"><p>${f===0?'目の前は冷たい石壁だ。':`通路が${f}マス先まで続いている。`}</p>
+  <small>左：${side(3)?'脇道がある':'壁'}</small><small>右：${side(1)?'脇道がある':'壁'}</small><small>地下${G.F}階　向き：${DN[G.d]}（${G.steps}歩）</small></div>${mapHtml()}</div>`;
+  let ctl=`<div class="dpad"><span></span><button class="main" onclick="go(0)">前進</button><span></span>
+  <button onclick="turn(3)">左を向く</button><button onclick="go(2)">後退</button><button onclick="turn(1)">右を向く</button></div>`;
+  
+  return[main,G.menu?menuView():ctl+extra()];
+}
+function battleView(){
+  const pend=G.pending==='atk';
+  const foes=`<div class="foes${G.isBoss?' boss':''}">${G.enemies.map(e=>`<figure class="${e.hp<=0?'gone':''}">${spr(e.n)}<figcaption>${e.n}</figcaption></figure>`).join('')}</div>`;
+  const main=foes+G.enemies.map((e,i)=>`<button class="en${e.hp<=0?' dead':''}" ${pend&&e.hp>0?'':'disabled'} onclick="tgt(${i})"><span>${e.n}</span><span class="bar"><s style="width:${Math.max(0,e.hp)/e.max*100}%"></s></span></button>`).join('');
+  const m=G.party[G.cur];let ctl;
+  if(G.auto)ctl='<p class="who">オート戦闘中…</p><button class="main" style="width:100%" onclick="G.auto=false;render()">停止</button>';
+  else if(G.pending==='atk')ctl=`<p class="who">${m.n}：誰を攻撃する？</p><button onclick="cancel()">戻る</button>`;
+  else if(G.pending==='heal'||G.pending==='herb')ctl=`<p class="who">${m.n}：誰を癒す？</p><div class="row">${G.party.map((p,i)=>`<button onclick="healT(${i})">${p.n}（${p.hp}/${p.max}）</button>`).join('')}</div><button onclick="cancel()">戻る</button>`;
+  else{
+    const sp=m.c==='魔術師'?'火球（MP3）':m.c==='僧侶'?'癒し（MP2）':'';
+    ctl=`<p class="who">${m.n}はどうする？</p><div class="row"><button class="main" onclick="act('atk')">攻撃</button>${sp?`<button onclick="act('spell')">${sp}</button>`:'<span></span>'}<button onclick="act('def')">防御</button><button onclick="act('item')">薬草（${G.herb}）</button><button onclick="act('run')">逃げる</button><button onclick="act('auto')">オート</button></div>`;
+  }
+  return[main,ctl];
+}
+function endView(){
+  const win=G.mode==='win';
+  return[`<div class="stage"><div class="view"><p>${win?'大魔導師ヴォルグは崩れ落ち、迷宮に静けさが戻った。あなたたちの勝利だ。':'暗闇の中で、最後の灯りが消えた。'}</p></div></div>`,
+  `${win?`<button class="main" style="width:100%;margin-bottom:6px" onclick="newLoop()">データを引き継いで1階から（${(G.loop||0)+2}周目）</button><button style="width:100%" onclick="newGame()">新しく作り直す</button>`:`<button class="main" style="width:100%" onclick="newGame()">最初からやり直す</button>`}`];
+}
+function render0(){
+  const [main,ctl]=G.mode==='explore'?exploreView():G.mode==='battle'?battleView():endView();
+  document.getElementById('app').innerHTML='<h1>暗黒の螺旋回廊</h1><div class="party">'+G.party.map((m,i)=>
+    `<div class="pm${m.hp<=0?' dead':''}${G.mode==='battle'&&i===G.cur?' cur':''}"><b>${m.n}</b><i>${m.c} Lv${m.lv}</i>${gb('HP',m.hp,m.max,'')}${gb('MP',m.mp,m.mmp,'mp')}<span>攻+${m.w?m.w.a:0} 防+${m.ar?m.ar.d:0}</span></div>`).join('')
+    +`</div><div class="gold">所持金 ${G.gold}G</div>${main}<div class="log">${G.log.slice(-6).map(l=>`<p>${l}</p>`).join('')}</div>${ctl}`;
+}
+let AC,mg,NB,bgm='',muted=false,step=0,nextT=0;
+try{muted=localStorage.getItem('dungeon-mute')==='1'}catch(e){}
+const N=n=>440*Math.pow(2,(n-69)/12);
+const seg=(a,r)=>a.concat(r);
+const FL=[[69,0,72,0,76,0,72,0],[77,0,72,0,69,0,72,0],[74,0,69,0,65,0,69,0],[71,0,76,0,80,0,76,71]];
+const BL=[[76,81,76,72,76,81,76,72],[77,81,77,72,77,81,77,72],[74,77,74,69,74,77,74,69],[76,80,76,71,76,80,83,80]];
+const RT=[45,41,38,40];
+const TR={
+  field:{bpm:80,lead:[].concat(...FL),bass:[].concat(...RT.map(r=>[r,0,r,0,r,0,r+12,0]))},
+  battle:{bpm:156,drum:1,lead:[].concat(...BL),bass:[].concat(...RT.map(r=>[r,r+12,r,r+12,r,r+12,r,r+12]))}
+};
+let PW;
+const hold=(a,i)=>{let k=1;while(a[(i+k)%32]===-1&&k<32)k++;return k};
+TR.field={bpm:60,
+ lead:[69,-1,-1,-1,0,0,72,-1, 70,-1,-1,-1,-1,-1,0,0, 67,-1,0,0,72,-1,-1,-1, 68,-1,-1,-1,69,-1,-1,-1],
+ bass:[38,-1,-1,-1,38,0,45,0, 34,-1,-1,-1,34,0,41,0, 36,-1,-1,-1,36,0,43,0, 33,-1,-1,-1,33,0,40,0]};
+TR.battle={bpm:168,drum:1,
+ lead:[74,0,0,74,0,77,-1,-1, 70,0,0,70,0,74,-1,-1, 72,0,0,72,0,75,-1,-1, 69,0,0,69,0,73,-1,76],
+ bass:[38,38,50,38,38,50,51,50, 34,34,46,34,34,46,47,46, 36,36,48,36,36,48,49,48, 33,33,45,33,33,45,46,45]};
+function tone(type,f,t,d,v){
+  const o=AC.createOscillator(),g=AC.createGain();if(type==='pulse')o.setPeriodicWave(PW);else o.type=type;o.frequency.value=f;
+  g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);
+  o.connect(g);g.connect(mg);o.start(t);o.stop(t+d+.02);
+}
+function noise(t,d,v){
+  const s=AC.createBufferSource(),g=AC.createGain();s.buffer=NB;
+  g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);
+  s.connect(g);g.connect(mg);s.start(t);s.stop(t+d+.02);
+}
+function drum(i,t){
+  if(i%2)noise(t,.03,.025);
+  if(i%8===2||i%8===6)noise(t,.1,.07);
+  if(i%8===0){const o=AC.createOscillator(),g=AC.createGain();o.frequency.setValueAtTime(140,t);o.frequency.exponentialRampToValueAtTime(40,t+.1);
+    g.gain.setValueAtTime(.18,t);g.gain.exponentialRampToValueAtTime(.001,t+.12);o.connect(g);g.connect(mg);o.start(t);o.stop(t+.14)}
+}
+function sched(){
+  if(!AC||muted||!bgm)return;
+  const T=TR[bgm],sd=30/T.bpm;
+  while(nextT<AC.currentTime+.3){
+    const i=step%32,l=T.lead[i],b=T.bass[i];
+    if(l>0)tone('pulse',N(l),nextT,sd*hold(T.lead,i)*.95,.06);
+    if(b>0)tone('triangle',N(b),nextT,sd*hold(T.bass,i)*.95,.14);
+    if(T.drum)drum(i,nextT);
+    nextT+=sd;step++;
+  }
+}
+function setBgm(n){if(n===bgm)return;bgm=n;step=0;if(AC)nextT=AC.currentTime+.05}
+function bgmStart(){
+  if(!AC){
+    AC=new(window.AudioContext||window.webkitAudioContext)();mg=AC.createGain();mg.gain.value=.5;mg.connect(AC.destination);
+    const re=new Float32Array(32),im=new Float32Array(32);for(let k=1;k<32;k++)im[k]=2/(k*Math.PI)*Math.sin(k*Math.PI*.25);PW=AC.createPeriodicWave(re,im);
+    NB=AC.createBuffer(1,AC.sampleRate*.2,AC.sampleRate);const d=NB.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+    nextT=AC.currentTime+.1;setInterval(sched,100);
+  }
+  if(AC.state==='suspended'&&!muted)AC.resume();
+}
+document.addEventListener('pointerdown',bgmStart);
+const mb=document.createElement('button');
+mb.style.cssText='position:fixed;top:calc(8px + env(safe-area-inset-top,0px));right:10px;z-index:5;min-height:36px;padding:2px 10px;font-size:13px';
+const mlabel=()=>{mb.textContent=muted?'BGM OFF':'BGM ON'};
+mb.onclick=()=>{
+  muted=!muted;try{localStorage.setItem('dungeon-mute',muted?'1':'0')}catch(e){}
+  if(AC){if(muted)AC.suspend();else AC.resume()}mlabel();
+};
+mlabel();document.body.appendChild(mb);
+let LANG='ja';try{LANG=localStorage.getItem('dungeon-lang')||'ja'}catch(e){}
+const W={'戦士':'Fighter','僧侶':'Priest','魔術師':'Mage','盗賊':'Thief','ガイウス':'Gaius','ミリア':'Milia','ゼノン':'Zenon','リーゼ':'Liese','スライム':'Slime','ゴブリン':'Goblin','スケルトン':'Skeleton','オーク':'Orc','亡霊':'Specter','石像':'Gargoyle','吸血鬼':'Vampire','魔狼':'Dire Wolf','竜牙兵':'Dragon Warrior','魔神':'Demon','大魔導師ヴォルグ':'Archmage Volg','ヴォルグ':'Volg','薬草':'Herb','帰還の玉':'Return Orb','鉄の剣':'Iron Sword','戦斧':'Battle Axe','鋼の剣':'Steel Sword','聖銀の剣':'Silver Sword','魔剣':'Demon Blade','竜殺しの剣':'Dragonslayer','革の鎧':'Leather Armor','鎖帷子':'Chainmail','鋼の鎧':'Steel Armor','聖銀の鎧':'Silver Armor','魔鎧':'Demon Armor','竜鱗の鎧':'Dragon Scale Armor','北':'North','東':'East','南':'South','西':'West'};
+const WK=Object.keys(W).sort((a,b)=>b.length-a.length);
+const E={'暗黒の螺旋回廊':'The Dark Spiral','名前と職業を選んで、4人の冒険者を作ろう。':'Choose names and classes for your four adventurers.','冒険を始める':'Begin the adventure','続きから':'Continue','前進':'Forward','後退':'Step back','左を向く':'Turn left','右を向く':'Turn right','宿で休む（10G）':'Rest at inn (10G)','蘇生する（80G）':'Revive (80G)','店':'Shop','階段を上る':'Go up stairs','階段を下りる':'Go down stairs','名前変更':'Rename','戻る':'Back','決定':'OK','名前を変更（6文字まで）':'Rename (up to 6 chars)','目の前は冷たい石壁だ。':'A cold stone wall lies ahead.','攻撃':'Attack','防御':'Defend','逃げる':'Run','オート':'Auto','オート戦闘中…':'Auto battle...','停止':'Stop','火球（MP3）':'Fireball (MP3)','癒し（MP2）':'Heal (MP2)','薬草 20G':'Herb 20G','帰還の玉 100G':'Return Orb 100G','新しく作り直す':'Create a new party','最初からやり直す':'Start over','大魔導師ヴォルグは崩れ落ち、迷宮に静けさが戻った。あなたたちの勝利だ。':'Archmage Volg collapses and silence returns to the dungeon. Victory is yours.','暗闇の中で、最後の灯りが消えた。':'In the darkness, the last light goes out.'};
+const U=[
+[/^所持金 (\d+)G$/,'Gold: $1G'],
+[/^通路が(\d+)マス先まで続いている。$/,'The corridor continues $1 squares ahead.'],
+[/^左：(.+)$/,(m,a)=>'Left: '+(a==='壁'?'wall':'side path')],
+[/^右：(.+)$/,(m,a)=>'Right: '+(a==='壁'?'wall':'side path')],
+[/^地下(\d+)階\u3000向き：(.)（(\d+)歩）$/,'B$1F, facing $2 ($3 steps)'],
+[/^最深階へ（地下(\d+)階）$/,'To deepest floor (B$1F)'],
+[/^薬草（(\d+)）を誰に使う？$/,'Use a herb ($1) on whom?'],
+[/^薬草（(\d+)）$/,'Herbs ($1)'],
+[/^帰還の玉（(\d+)）$/,'Return Orb ($1)'],
+[/^店\u3000所持金 (\d+)G$/,'Shop - Gold: $1G'],
+[/^(.+) 攻\+(\d+)\u3000(\d+)G$/,'$1 ATK+$2, $3G'],
+[/^(.+) 防\+(\d+)\u3000(\d+)G$/,'$1 DEF+$2, $3G'],
+[/^攻\+(\d+) 防\+(\d+)$/,'ATK+$1 DEF+$2'],
+[/^(.+)：誰を攻撃する？$/,'$1: attack whom?'],
+[/^(.+)：誰を癒す？$/,'$1: heal whom?'],
+[/^(.+)はどうする？$/,'What will $1 do?'],
+[/^データを引き継いで1階から（(\d+)周目）$/,'Carry over data and restart from B1F (loop $1)']
+];
+const S=[
+[/^罠だ！$/,'A trap!'],[/^毒矢が飛び出し、全員に(\d+)のダメージ。$/,'Poison darts hit everyone for $1 damage.'],
+[/^宝箱を見つけた。$/,'Found a chest.'],[/^(\d+)Gを手に入れた。$/,'Got $1G.'],[/^薬草を(\d+)個拾った。$/,'Picked up $1 herb(s).'],
+[/^(.+)を(.+)が装備した。$/,'$2 equipped $1.'],[/^(.+)を拾ったが、売り払った。$/,'Found $1 but sold it.'],
+[/^玉座の間。$/,'The throne room.'],[/^大魔導師ヴォルグがゆっくりと振り向いた。$/,'Archmage Volg slowly turns around.'],
+[/^迷宮の入口に立った。$/,'You stand at the dungeon entrance.'],[/^奥には大魔導師が潜むという。$/,'They say an archmage lurks deep below.'],
+[/^石壁に阻まれた。$/,'Blocked by a stone wall.'],[/^地下(\d+)階。$/,'Basement floor $1.'],[/^入口の街に戻った。$/,'Returned to the town at the entrance.'],
+[/^帰還の玉を持っていない。$/,'You have no Return Orb.'],[/^薬草は使えない。$/,'You cannot use a herb.'],[/^(.+)は薬草でHP30回復した。$/,'$1 recovered 30 HP with a herb.'],
+[/^お金が足りない。$/,'Not enough gold.'],[/^今の装備で十分だ。$/,'Your current gear is good enough.'],[/^宿代の10Gが足りない。$/,'You need 10G for the inn.'],
+[/^宿で眠り、生きている仲間は全回復した。$/,'Rested at the inn. Living members fully recovered.'],[/^蘇生が必要な仲間はいない。$/,'No one needs reviving.'],[/^蘇生には80G必要だ。$/,'Reviving costs 80G.'],
+[/^(.+)は蘇生した。$/,'$1 was revived.'],[/^蘇生は失敗した。$/,'The revival failed.'],[/^(.+)は灰になった（ロスト）。$/,'$1 turned to ashes (lost).'],
+[/^名前を変更した。$/,'Names changed.'],[/^冒険を再開した。$/,'Adventure resumed.'],[/^(\d+)周目の始まり。$/,'Loop $1 begins.'],[/^迷宮の構造が変わり、敵も強くなった。$/,'The maze has changed and the enemies are stronger.'],
+[/^薬草がない。$/,'No herbs left.'],[/^MPが足りない。$/,'Not enough MP.'],[/^ヴォルグからは逃げられない！$/,'You cannot flee from Volg!'],[/^パーティは逃げ出した。$/,'The party fled.'],[/^逃げられなかった！$/,'Could not escape!'],
+[/^(.+)が現れた！$/,(m,a)=>a.replace(/、/g,', ')+' appear!'],[/^(.+)を倒した。$/,'$1 was defeated.'],[/^(.+)の攻撃！$/,'$1 attacks!'],[/^急所を突いた！$/,'Critical hit!'],
+[/^敵全体に(\d+)のダメージ。$/,'Every enemy takes $1 damage.'],[/^全員に(\d+)のダメージ。$/,'Everyone takes $1 damage.'],[/^(.+)に(\d+)のダメージ。$/,'$1 takes $2 damage.'],
+[/^(.+)の火球！$/,'$1 casts Fireball!'],[/^(.+)の癒し。$/,'$1 casts Heal.'],[/^(.+)には効かなかった。$/,'It had no effect on $1.'],[/^(.+)のHPが(\d+)回復。$/,'$1 recovers $2 HP.'],
+[/^(.+)は(.+)に薬草を使った。$/,'$1 used a herb on $2.'],[/^HP30回復。$/,'Recovered 30 HP.'],[/^薬草は効かなかった。$/,'The herb had no effect.'],[/^(.+)は身を固めた。$/,'$1 braces for attacks.'],
+[/^(.+)の闇の炎！$/,'$1 unleashes Dark Flame!'],[/^(.+)は倒れた…$/,'$1 has fallen...'],[/^(.+)の攻撃は外れた。$/,"$1's attack missed."],[/^パーティは全滅した…$/,'The party was wiped out...'],
+[/^勝利！$/,'Victory!'],[/^各自(\d+)の経験値と(\d+)Gを得た。$/,'Each member gains $1 XP and $2G.'],[/^薬草を拾った。$/,'Found a herb.'],[/^(.+)はレベル(\d+)に上がった！$/,'$1 reached level $2!']
+];
+const pun=s=>s.replace(/（/g,' (').replace(/）/g,')').replace(/\u3000/g,' ').replace(/：/g,': ').replace(/、/g,', ').replace(/。/g,'.').replace(/！/g,'!').replace(/…/g,'...');
+function trT(t,lg){
+  const s=t.trim();let o=s;
+  if(lg)o=(s.match(/[^。！…]*[。！…]|[^。！…]+$/g)||[]).map(x=>{x=x.trim();for(const[r,p]of S)if(r.test(x))return x.replace(r,p);return x}).join(' ');
+  else if(E[s])o=E[s];
+  else for(const[r,p]of U)if(r.test(s)){o=s.replace(r,p);break}
+  WK.forEach(k=>{o=o.split(k).join(W[k])});
+  return pun(o);
+}
+function tx(root){
+  if(LANG!=='en')return;
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),a=[];
+  while(w.nextNode())a.push(w.currentNode);
+  a.forEach(n=>{if(n.nodeValue.trim())n.nodeValue=trT(n.nodeValue,!!(n.parentElement&&n.parentElement.closest('.log')))});
+  root.querySelectorAll('input').forEach(i=>{i.value=trT(i.value,false)});
+}
+const lb=document.createElement('button');
+lb.style.cssText='position:fixed;top:calc(8px + env(safe-area-inset-top,0px));right:108px;z-index:5;min-height:36px;padding:2px 10px;font-size:13px';
+const llabel=()=>{lb.textContent=LANG==='en'?'日本語':'English';document.documentElement.lang=LANG};
+lb.onclick=()=>{LANG=LANG==='en'?'ja':'en';try{localStorage.setItem('dungeon-lang',LANG)}catch(e){}llabel();render()};
+llabel();document.body.appendChild(lb);
+newGame();
+</script></body></html>
